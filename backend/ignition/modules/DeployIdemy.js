@@ -3,8 +3,9 @@ const { ethers } = require("hardhat");
 async function main() {
   const IdemyIdentity = await ethers.getContractFactory("IdemyIdentity");
   const contract = await IdemyIdentity.deploy();
-  await contract.deployed();
-  console.log("IdemyIdentity deployed to:", contract.address);
+  // For ethers v6, use waitForDeployment() instead of deployed()
+  await contract.waitForDeployment();
+  console.log("IdemyIdentity deployed to:", contract.target);
 }
 
 main()

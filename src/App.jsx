@@ -6,6 +6,7 @@ import AboutPage from "./pages/AboutPage"; // new
 import CreatePage from "./pages/CreatePage"; // new
 import DashboardPage from "./pages/DashboardPage"; // new
 import ProfilePage from "./pages/ProfilePage"; // new
+import TestPage from "./pages/TestPage";
 
 import "./index.css";
 
@@ -19,6 +20,7 @@ const App = () => {
           <Route path="create" element={<CreatePage />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="test" element={<TestPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

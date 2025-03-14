@@ -31,6 +31,11 @@ const navigationLinks = [
     path: "/profile",
     dropdown: [],
   },
+  {
+    name: "TEST",
+    path: "/test",
+    dropdown: [],
+  },
 ];
 
 const Navbar = () => {

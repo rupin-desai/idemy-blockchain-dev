@@ -4,6 +4,7 @@ import { GiHamburgerMenu, GiCancel } from "react-icons/gi";
 import { motion } from "framer-motion";
 import MobileNavbar from "../Menu/MobileNavbar";
 
+// Updated navigation links to include new pages
 const navigationLinks = [
   {
     name: "HOME",
@@ -13,6 +14,21 @@ const navigationLinks = [
   {
     name: "ABOUT",
     path: "/about",
+    dropdown: [],
+  },
+  {
+    name: "CREATE",
+    path: "/create",
+    dropdown: [],
+  },
+  {
+    name: "DASHBOARD",
+    path: "/dashboard",
+    dropdown: [],
+  },
+  {
+    name: "PROFILE",
+    path: "/profile",
     dropdown: [],
   },
 ];

@@ -68,7 +68,7 @@ const Navbar = () => {
         {/* Logo */}
         <div className="flex flex-start">
           <img
-            src="/Digi_Logo_Full_Cropped.png"
+            src="/logo.png"
             alt="Digi Logo"
             className="h-14 sm:h-14 w-auto transition-all duration-300 ease-in-out"
           />

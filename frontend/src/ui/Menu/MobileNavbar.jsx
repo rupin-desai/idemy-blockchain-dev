@@ -39,7 +39,7 @@ const MobileNavbar = ({
       {/* Logo at the top, centered */}
       <div className="flex justify-center mb-8">
         <img
-          src="/Digi_Logo_Full_Cropped_White.png"
+          src="/logo.png"
           alt="Logo"
           className="h-14 w-auto transition-all duration-300 ease-in-out"
         />

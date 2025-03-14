@@ -21,35 +21,37 @@ const FAQItem = ({ item, isOpen, toggle }) => {
         className="w-full text-left py-4 flex justify-between items-center focus:outline-none"
       >
         <span className="font-medium text-gray-800">{item.question}</span>
-        <span className="text-gray-600">{isOpen ? '-' : '+'}</span>
+        <span className="text-gray-600 text-xl">{isOpen ? '-' : '+'}</span>
       </button>
-      {isOpen && (
-        <div className="pb-4 text-gray-600">
-          {item.answer}
-        </div>
-      )}
+      <div
+        className={`overflow-hidden transition-all duration-300 ${
+          isOpen ? 'max-h-40' : 'max-h-0'
+        }`}
+      >
+        <p className="pb-4 text-gray-600">{item.answer}</p>
+      </div>
     </div>
   );
 };
 
 const AboutFAQ = () => {
-  const [openFAQIndex, setOpenFAQIndex] = useState(null);
+  const [openIndex, setOpenIndex] = useState(null);
 
-  const toggleFAQ = (index) => {
-    setOpenFAQIndex(openFAQIndex === index ? null : index);
+  const toggleFAQ = index => {
+    setOpenIndex(openIndex === index ? null : index);
   };
 
   return (
-    <section>
+    <section className="py-8 px-4">
       <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">
         Frequently Asked Questions
       </h2>
-      <div className="max-w-3xl mx-auto bg-white rounded shadow-md">
+      <div className="max-w-2xl mx-auto">
         {faqData.map((item, index) => (
           <FAQItem
             key={index}
             item={item}
-            isOpen={openFAQIndex === index}
+            isOpen={openIndex === index}
             toggle={() => toggleFAQ(index)}
           />
         ))}

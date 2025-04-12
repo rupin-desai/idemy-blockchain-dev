@@ -1,7 +1,46 @@
-node_modules
-dist
-.ganache
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+
+# Blockchain data
+.ganache/
 /src/blockchain/.db
 /src/blockchain/build
-logs
+
+# Environment variables - expanded for security
 .env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Firebase
+*firebase-service-account*.json
+firebase-debug.log
+
+# Testing
+coverage/
+
+# Temporary files
+tmp/
+temp/

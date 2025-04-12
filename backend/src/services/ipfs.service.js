@@ -139,6 +139,39 @@ class IPFSService {
       throw new Error(`IPFS unpin failed: ${error.message}`);
     }
   }
+
+  /**
+   * Pin a file to IPFS
+   * @param {Buffer} fileBuffer - The file buffer
+   * @param {Object} metadata - Metadata for the file (optional)
+   */
+  async pinFileToIPFS(fileBuffer, metadata) {
+    try {
+      const url = `${process.env.IPFS_API_URL}/pinFileToIPFS`;
+      
+      const formData = new FormData();
+      formData.append('file', fileBuffer);
+      
+      if (metadata) {
+        formData.append('pinataMetadata', JSON.stringify(metadata));
+      }
+      
+      const response = await axios.post(url, formData, {
+        headers: {
+          'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+          // Or use API key/secret if preferred:
+          // 'pinata_api_key': process.env.PINATA_API_KEY,
+          // 'pinata_secret_api_key': process.env.PINATA_SECRET_API_KEY,
+          ...formData.getHeaders()
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error pinning file to IPFS:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new IPFSService();

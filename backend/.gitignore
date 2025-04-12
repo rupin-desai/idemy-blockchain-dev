@@ -1,2 +1,6 @@
 node_modules
 dist
+.ganache
+/src/blockchain/.db
+/src/blockchain/build
+logs

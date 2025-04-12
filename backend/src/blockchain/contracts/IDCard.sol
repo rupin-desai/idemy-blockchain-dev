@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-
 /**
  * @title IDCard
- * @dev NFT implementation for digital identity cards
+ * @dev Simplified NFT implementation for digital identity cards
  */
-contract IDCard is ERC721URIStorage {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+contract IDCard {
+    // Token counter
+    uint256 private _tokenIdCounter;
     
     // Identity contract address 
     address public identityContractAddress;
+    
+    // Token data
+    mapping(uint256 => string) private _tokenURIs;
+    mapping(uint256 => address) private _owners;
+    mapping(address => uint256) private _balances;
     
     // Mapping from tokenId to DID
     mapping(uint256 => string) private _tokenToDID;
@@ -25,86 +27,139 @@ contract IDCard is ERC721URIStorage {
     mapping(uint256 => string[]) private _tokenToDocuments;
     
     // Events
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event IDCardMinted(uint256 tokenId, string did, address owner);
     event DocumentLinked(uint256 tokenId, string documentId);
     
     /**
-     * @dev Initialize the contract with Identity contract address
+     * @dev Initialize the contract
      * @param _identityContractAddress Address of the Identity contract
      */
-    constructor(address _identityContractAddress) ERC721("Digital Identity Card", "IDC") {
+    constructor(address _identityContractAddress) {
         identityContractAddress = _identityContractAddress;
+        _tokenIdCounter = 1;
     }
     
     /**
      * @dev Mint a new ID card NFT
-     * @param _to Address to mint the token to
-     * @param _did DID of the identity
-     * @param _tokenURI URI of the token metadata
-     * @return uint256 Minted token ID
+     * @param to Address to mint the token to
+     * @param did DID of the identity
+     * @param uri URI of the token metadata
+     * @return tokenId of the newly minted token
      */
-    function mintIDCard(address _to, string memory _did, string memory _tokenURI) public returns (uint256) {
-        require(_didToToken[_did] == 0, "ID card already exists for this DID");
+    function mintIDCard(address to, string memory did, string memory uri) public returns (uint256) {
+        require(_didToToken[did] == 0, "IDCard: ID card already exists for this DID");
         
-        _tokenIds.increment();
-        uint256 newTokenId = _tokenIds.current();
+        uint256 newTokenId = _tokenIdCounter;
+        _tokenIdCounter++;
         
-        _mint(_to, newTokenId);
-        _setTokenURI(newTokenId, _tokenURI);
+        _mint(to, newTokenId);
+        _setTokenURI(newTokenId, uri);
         
-        _tokenToDID[newTokenId] = _did;
-        _didToToken[_did] = newTokenId;
+        _tokenToDID[newTokenId] = did;
+        _didToToken[did] = newTokenId;
         
-        emit IDCardMinted(newTokenId, _did, _to);
+        emit IDCardMinted(newTokenId, did, to);
         
         return newTokenId;
     }
     
     /**
-     * @dev Link a document to an ID card
-     * @param _tokenId Token ID of the ID card
-     * @param _documentId Document ID to link
+     * @dev Link document to ID card
+     * @param tokenId ID card token ID
+     * @param documentId Document ID to link
      */
-    function linkDocument(uint256 _tokenId, string memory _documentId) public {
-        require(_exists(_tokenId), "ID card does not exist");
-        require(ownerOf(_tokenId) == msg.sender, "Not the owner of the ID card");
+    function linkDocument(uint256 tokenId, string memory documentId) public {
+        require(_exists(tokenId), "IDCard: token does not exist");
+        require(ownerOf(tokenId) == msg.sender, "IDCard: caller is not the owner");
         
-        _tokenToDocuments[_tokenId].push(_documentId);
-        
-        emit DocumentLinked(_tokenId, _documentId);
+        _tokenToDocuments[tokenId].push(documentId);
+        emit DocumentLinked(tokenId, documentId);
     }
     
     /**
-     * @dev Get token ID by DID
-     * @param _did DID to lookup
-     * @return uint256 Token ID
+     * @dev Get token by DID
+     * @param did Identity DID
+     * @return tokenId associated with the DID
      */
-    function getTokenByDID(string memory _did) public view returns (uint256) {
-        uint256 tokenId = _didToToken[_did];
-        require(tokenId != 0, "No ID card found for this DID");
-        
+    function getTokenByDID(string memory did) public view returns (uint256) {
+        uint256 tokenId = _didToToken[did];
+        require(tokenId != 0, "IDCard: no token found for this DID");
         return tokenId;
     }
     
     /**
      * @dev Get DID by token ID
-     * @param _tokenId Token ID to lookup
-     * @return string DID
+     * @param tokenId Token ID
+     * @return DID associated with the token
      */
-    function getDIDByToken(uint256 _tokenId) public view returns (string memory) {
-        require(_exists(_tokenId), "ID card does not exist");
-        
-        return _tokenToDID[_tokenId];
+    function getDIDByToken(uint256 tokenId) public view returns (string memory) {
+        require(_exists(tokenId), "IDCard: token does not exist");
+        return _tokenToDID[tokenId];
     }
     
     /**
      * @dev Get linked documents
-     * @param _tokenId Token ID to lookup
-     * @return string[] Array of document IDs
+     * @param tokenId Token ID
+     * @return Array of linked document IDs
      */
-    function getLinkedDocuments(uint256 _tokenId) public view returns (string[] memory) {
-        require(_exists(_tokenId), "ID card does not exist");
+    function getLinkedDocuments(uint256 tokenId) public view returns (string[] memory) {
+        require(_exists(tokenId), "IDCard: token does not exist");
+        return _tokenToDocuments[tokenId];
+    }
+    
+    /**
+     * @dev Internal function to mint a new token
+     * @param to The address that will own the minted token
+     * @param tokenId The token ID to mint
+     */
+    function _mint(address to, uint256 tokenId) internal {
+        require(to != address(0), "IDCard: mint to the zero address");
+        require(!_exists(tokenId), "IDCard: token already minted");
         
-        return _tokenToDocuments[_tokenId];
+        _owners[tokenId] = to;
+        _balances[to]++;
+        
+        emit Transfer(address(0), to, tokenId);
+    }
+    
+    /**
+     * @dev Check if token exists
+     * @param tokenId Token ID to check
+     * @return bool True if token exists
+     */
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return _owners[tokenId] != address(0);
+    }
+    
+    /**
+     * @dev Get token owner
+     * @param tokenId Token ID
+     * @return address Owner of the token
+     */
+    function ownerOf(uint256 tokenId) public view returns (address) {
+        address owner = _owners[tokenId];
+        require(owner != address(0), "IDCard: invalid token ID");
+        return owner;
+    }
+    
+    /**
+     * @dev Set token URI
+     * @param tokenId Token ID
+     * @param uri Token URI
+     */
+    function _setTokenURI(uint256 tokenId, string memory uri) internal {
+        require(_exists(tokenId), "IDCard: URI set for nonexistent token");
+        _tokenURIs[tokenId] = uri;
+    }
+    
+    /**
+     * @dev Get token URI
+     * @param tokenId Token ID
+     * @return string Token URI
+     */
+    function tokenURI(uint256 tokenId) public view returns (string memory) {
+        require(_exists(tokenId), "IDCard: URI query for nonexistent token");
+        return _tokenURIs[tokenId];
     }
 }

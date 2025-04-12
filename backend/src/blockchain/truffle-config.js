@@ -1,37 +1,22 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-require('dotenv').config();
+require("dotenv").config();
 
 module.exports = {
   networks: {
     development: {
-      host: "127.0.0.1",
-      port: 8545,
-      network_id: "*", // Match any network id
-      websockets: true
-    },
-    ganache: {
-      host: "127.0.0.1",
-      port: 8545,
-      network_id: "1337",
-      websockets: true
-    },
-    goerli: {
       provider: () => new HDWalletProvider(
-        process.env.MNEMONIC, 
-        `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`
+        '0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d', // First account's private key
+        'http://127.0.0.1:8545'
       ),
-      network_id: 5,
+      network_id: "*",
       gas: 5500000,
-      confirmations: 2,
-      timeoutBlocks: 200,
-      skipDryRun: true
-    },
+    }
   },
-  
+
   // Configure your compilers
   compilers: {
     solc: {
-      version: "0.8.17",
+      version: "0.8.20", // Updated from 0.8.17 to 0.8.20
       settings: {
         optimizer: {
           enabled: true,
@@ -40,7 +25,7 @@ module.exports = {
       }
     }
   },
-  
+
   // DB for Ganache persistent blockchain
   db: {
     enabled: true,
@@ -48,8 +33,8 @@ module.exports = {
     adapter: {
       name: "indexeddb",
       settings: {
-        directory: ".db"
-      }
-    }
-  }
+        directory: ".db",
+      },
+    },
+  },
 };

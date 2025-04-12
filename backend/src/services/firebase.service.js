@@ -1,17 +1,14 @@
 const admin = require("firebase-admin");
-const config = require("../config");
-const firebaseConfig = config.firebase;
+const initializeFirebase = require("../config/firebase.config");
 
 // Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(firebaseConfig),
-});
+const firebaseAdmin = initializeFirebase();
 
 class FirebaseService {
   constructor() {
-    this.auth = admin.auth();
-    this.db = admin.firestore();
-    this.storage = admin.storage();
+    this.auth = firebaseAdmin.auth();
+    this.db = firebaseAdmin.firestore();
+    this.storage = firebaseAdmin.storage();
   }
 
   // User Authentication Methods

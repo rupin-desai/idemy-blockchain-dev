@@ -1,6 +1,6 @@
 const Web3 = require("web3");
 const config = require("../../config");
-const Identity = require("../contracts/Identity.json");
+const Identity = require("../build/contracts/Identity.json");
 
 class IdentityService {
   constructor() {

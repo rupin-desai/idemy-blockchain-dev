@@ -1,9 +1,9 @@
 const Web3 = require("web3");
 const ethers = require("ethers");
 const config = require("../../config");
-const Identity = require("../contracts/Identity.json");
-const IDCard = require("../contracts/IDCard.json");
-const DocumentRegistry = require("../contracts/DocumentRegistry.json");
+const Identity = require('../build/contracts/Identity.json');  // Corrected path
+const IDCard = require("../build/contracts/IDCard.json");
+const DocumentRegistry = require("../build/contracts/DocumentRegistry.json");
 
 class BlockchainService {
   constructor() {

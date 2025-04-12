@@ -1,33 +1,46 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/DashboardPage";
-import Identities from "./pages/IdentitiesPage";
-// import Documents from "./pages/Documents";
-// import NFTs from "./pages/NFTs";
-// import Blockchain from "./pages/Blockchain";
-// import Users from "./pages/Users";
-// import Activity from "./pages/Activity";
-// import Settings from "./pages/Settings";
-import TestFeatures from "./pages/TestFeaturesPage";
+import DashboardPage from "./pages/DashboardPage";
+import IdentitiesPage from "./pages/IdentitiesPage";
+import DocumentsPage from "./pages/DocumentsPage";
+import NFTsPage from "./pages/NFTsPage";
+import BlockchainPage from "./pages/BlockchainPage";
+import UsersPage from "./pages/UsersPage";
+import ActivityPage from "./pages/ActivityPage";
+import SettingsPage from "./pages/SettingsPage";
+import TestFeaturesPage from "./pages/TestFeaturesPage";
+import LoginPage from "./pages/LoginPage";
+import ProtectedRoute from "./components/navigation/ProtectedRoute";
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AdminLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="identities" element={<Identities />} />
-          {/* <Route path="documents" element={<Documents />} />
-          <Route path="nfts" element={<NFTs />} />
-          <Route path="blockchain" element={<Blockchain />} />
-          <Route path="users" element={<Users />} />
-          <Route path="activity" element={<Activity />} />
-          <Route path="settings" element={<Settings />} /> */}
-          <Route path="test" element={<TestFeatures />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="identities" element={<IdentitiesPage />} />
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="nfts" element={<NFTsPage />} />
+            <Route path="blockchain" element={<BlockchainPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="activity" element={<ActivityPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="test" element={<TestFeaturesPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 };
 

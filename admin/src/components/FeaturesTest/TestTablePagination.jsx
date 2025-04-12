@@ -7,7 +7,7 @@ const TestTablePagination = ({ currentPage = 1, totalPages = 1, totalItems = 0, 
   return (
     <div className="mt-4 flex items-center justify-between">
       <div className="text-sm text-gray-700">
-        Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of <span className="font-medium">{totalItems}</span> results
+        Showing <span className="font-medium">{startItem}</span> to <span className="font-medium">{endItem}</span> of <span className="font-medium">{totalItems}</span> students
       </div>
       <div className="flex space-x-2">
         <button 

@@ -4,6 +4,11 @@ import { Check, X } from "lucide-react";
 const AlertNotification = ({ show, type, message, onClose }) => {
   if (!show) return null;
   
+  const defaultMessages = {
+    success: "Student record processed successfully!",
+    error: "Error processing student record!"
+  };
+  
   return (
     <div className={`p-4 rounded-md ${type === "success" ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
       <div className="flex items-center">
@@ -16,7 +21,7 @@ const AlertNotification = ({ show, type, message, onClose }) => {
         </div>
         <div className="ml-3">
           <p className={`text-sm font-medium ${type === "success" ? "text-green-800" : "text-red-800"}`}>
-            {message || (type === "success" ? "Operation completed successfully!" : "An error occurred!")}
+            {message || defaultMessages[type]}
           </p>
         </div>
         <div className="ml-auto pl-3">

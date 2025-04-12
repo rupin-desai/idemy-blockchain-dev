@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Filter, CreditCard, User, Tag } from "lucide-react";
+import { Search, Filter, CreditCard, User, Tag, Clock, XCircle } from "lucide-react";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 

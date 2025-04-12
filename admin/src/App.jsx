@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import AdminLayout from "./layouts/AdminLayout";
 import DashboardPage from "./pages/DashboardPage";
@@ -38,6 +38,8 @@ const App = () => {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="test" element={<TestFeaturesPage />} />
           </Route>
+          {/* Catch all unknown routes and redirect to dashboard */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

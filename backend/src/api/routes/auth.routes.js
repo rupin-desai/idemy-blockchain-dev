@@ -14,4 +14,12 @@ router.post('/reset-password', authController.resetPassword);
 router.get('/profile', authMiddleware.authenticate, authController.getProfile);
 router.put('/profile', authMiddleware.authenticate, authController.updateProfile);
 
+// Development only - Create admin account for testing
+// Remove this conditional and route if createDevAdmin doesn't exist
+/* 
+if (process.env.NODE_ENV === 'development') {
+  router.post('/create-dev-admin', authController.createDevAdmin);
+}
+*/
+
 module.exports = router;

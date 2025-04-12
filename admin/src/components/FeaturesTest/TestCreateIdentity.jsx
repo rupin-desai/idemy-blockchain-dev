@@ -19,7 +19,7 @@ const studentDepartments = [
   { value: "arts", name: "Arts & Humanities" },
 ];
 
-const TestCreateIdentity = () => {
+const TestCreateIdentity = ({ onSuccess }) => {
   const { loading, error, createStudentIdentity } = useStudentIdentity();
   const [formData, setFormData] = useState({
     fullName: "",
@@ -100,6 +100,11 @@ const TestCreateIdentity = () => {
         yearLevel: "",
         photo: null,
       });
+
+      // Call onSuccess callback if provided
+      if (onSuccess && typeof onSuccess === "function") {
+        onSuccess();
+      }
 
       // Clear success message after 5 seconds
       setTimeout(() => {

@@ -12,6 +12,8 @@ const identityRoutes = require("./api/routes/identity.routes");
 const documentRoutes = require("./api/routes/document.routes");
 const nftRoutes = require("./api/routes/nft.routes");
 const blockchainRoutes = require("./api/routes/blockchain.routes");
+const adminRoutes = require("./api/routes/admin.routes");
+const devAuthRoutes = require('./api/routes/dev-auth.routes');
 
 // Import utilities
 const { AppError } = require("./utils/error-handler.util");
@@ -28,6 +30,9 @@ const initializeServices = async () => {
     const initializeFirebase = require("./config/firebase.config");
     const firebaseAdmin = initializeFirebase();
     logger.info("Firebase initialized successfully");
+
+    // Make Firebase service available to request handlers
+    app.locals.firebase = require("./services/firebase.service");
 
     // Initialize IPFS service if needed at startup
     logger.info("Initializing IPFS connection...");
@@ -81,6 +86,11 @@ app.use("/api/identity", identityRoutes);
 app.use("/api/document", documentRoutes);
 app.use("/api/nft", nftRoutes);
 app.use("/api/blockchain", blockchainRoutes);
+
+if (process.env.NODE_ENV === "development") {
+  app.use("/api/admin", adminRoutes);
+  app.use('/api/dev-auth', devAuthRoutes);
+}
 
 // 404 handler for undefined routes
 app.all("*", (req, res, next) => {

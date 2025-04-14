@@ -70,4 +70,12 @@ router.post('/identity/create',
   blockchainController.createIdentity
 );
 
+// Add these new routes before the module.exports line
+
+// Get contract ABIs for the frontend
+router.get('/contracts/abis', blockchainController.getContractABIs);
+
+// Get DIDs directly from the blockchain (no Firebase)
+router.get('/dids', blockchainController.getBlockchainDIDs);
+
 module.exports = router;

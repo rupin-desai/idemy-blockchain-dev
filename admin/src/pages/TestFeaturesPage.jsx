@@ -30,6 +30,9 @@ import TestBlockchainExplorer from "../components/FeaturesTest/TestBlockchainExp
 import useStudentIdentities from "../hooks/useStudentIdentities";
 import useBlockchainStatus from "../hooks/useBlockchainStatus";
 
+// Add this import at the top with other imports
+import TestBlockchainDIDs from "../components/FeaturesTest/TestBlockchainDIDs";
+
 const TestFeatures = () => {
   const [activeTab, setActiveTab] = useState("blockchain");
   const [showAlert, setShowAlert] = useState(false);
@@ -128,6 +131,7 @@ const TestFeatures = () => {
         tabs={[
           { id: "blockchain", label: "Blockchain" },
           { id: "explorer", label: "View Blockchain" },
+          { id: "blockchain-dids", label: "Blockchain DIDs" }, // Add this new tab
           { id: "identities", label: "Create Identity" },
           { id: "tables", label: "Student Records" },
           { id: "forms", label: "Test Forms" }
@@ -186,6 +190,10 @@ const TestFeatures = () => {
         <Card title="Ganache Blockchain Explorer">
           <TestBlockchainExplorer />
         </Card>
+      )}
+
+      {activeTab === "blockchain-dids" && (
+        <TestBlockchainDIDs />
       )}
     </div>
   );

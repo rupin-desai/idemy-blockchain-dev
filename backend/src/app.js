@@ -13,7 +13,7 @@ const documentRoutes = require("./api/routes/document.routes");
 const nftRoutes = require("./api/routes/nft.routes");
 const blockchainRoutes = require("./api/routes/blockchain.routes");
 const adminRoutes = require("./api/routes/admin.routes");
-const devAuthRoutes = require('./api/routes/dev-auth.routes');
+const devAuthRoutes = require("./api/routes/dev-auth.routes");
 
 // Import utilities
 const { AppError } = require("./utils/error-handler.util");
@@ -46,12 +46,111 @@ const initializeServices = async () => {
     const networkId = await web3.eth.net.getId();
     logger.info(`Connected to blockchain network ID: ${networkId}`);
 
+    // Test contract functionality
+    logger.info("Testing blockchain contracts...");
+    await testBlockchainContracts();
+
     return { firebaseAdmin, web3 };
   } catch (error) {
     logger.error("Error during services initialization:", error);
     throw error;
   }
 };
+
+/**
+ * Test if blockchain contracts are properly initialized and accessible
+ */
+async function testBlockchainContracts() {
+  try {
+    // Import blockchain service
+    const blockchainService = require("./blockchain/services/blockchain.service");
+
+    // Access contracts directly
+    const identityContract = blockchainService.identityContract;
+    const idCardContract = blockchainService.idCardContract;
+    const documentRegistryContract = blockchainService.documentRegistryContract;
+
+    // Test Identity Contract with public methods
+    logger.info(`Testing Identity Contract...`);
+    if (!identityContract) {
+      logger.error("Identity contract not initialized!");
+      return;
+    }
+
+    try {
+      // Test didExists which is a public method in Identity.sol
+      const testDid = "did:ethr:0x0000000000000000000000000000000000000000";
+      const exists = await identityContract.methods.didExists(testDid).call();
+      logger.info(`Identity Contract didExists check result: ${exists}`);
+    } catch (error) {
+      logger.error(
+        `Error calling view function on Identity Contract: ${error.message}`
+      );
+    }
+
+    // Test IDCard Contract with public methods
+    logger.info(`Testing IDCard Contract...`);
+    if (!idCardContract) {
+      logger.error("IDCard contract not initialized!");
+      return;
+    }
+
+    try {
+      // Get a fake DID to test with
+      const testDid = "did:ethr:0x0000000000000000000000000000000000000001";
+
+      // Test if a fake token exists by trying to get it (will fail but tests connectivity)
+      try {
+        const fakeTokenId = 9999;
+        await idCardContract.methods.ownerOf(fakeTokenId).call();
+      } catch (err) {
+        // This is expected to fail with "invalid token ID" which confirms contract works
+        logger.info(
+          `IDCard Contract test - expected error confirms contract connectivity: ${err.message.includes("invalid token ID")}`
+        );
+      }
+    } catch (error) {
+      logger.error(`Error testing IDCard Contract: ${error.message}`);
+    }
+
+    // Test Document Registry Contract
+    logger.info(`Testing Document Registry Contract...`);
+    if (!documentRegistryContract) {
+      logger.error("Document Registry contract not initialized!");
+      return;
+    }
+
+    try {
+      // Get the available methods from the contract
+      const availableMethods = Object.keys(documentRegistryContract.methods)
+        .filter(
+          (key) =>
+            typeof documentRegistryContract.methods[key] === "function" &&
+            key !== "call"
+        )
+        .join(", ");
+
+      logger.info(`Available DocumentRegistry methods: ${availableMethods}`);
+
+      // Try to use one of the available methods instead
+      // This could be verifyDocument, registerDocument, etc.
+      // For now, just check if the contract is properly initialized
+      if (availableMethods.length > 0) {
+        logger.info("Document Registry contract is properly initialized");
+      } else {
+        logger.warn("Document Registry contract has no available methods");
+      }
+    } catch (error) {
+      logger.error(
+        `Error testing Document Registry Contract: ${error.message}`
+      );
+    }
+
+    logger.info("Contract tests completed");
+  } catch (error) {
+    logger.error(`Error testing blockchain contracts: ${error.message}`);
+  }
+}
 
 // Create Express app
 const app = express();
@@ -89,7 +188,7 @@ app.use("/api/blockchain", blockchainRoutes);
 
 if (process.env.NODE_ENV === "development") {
   app.use("/api/admin", adminRoutes);
-  app.use('/api/dev-auth', devAuthRoutes);
+  app.use("/api/dev-auth", devAuthRoutes);
 }
 
 // 404 handler for undefined routes

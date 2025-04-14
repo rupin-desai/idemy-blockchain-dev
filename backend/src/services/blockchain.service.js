@@ -102,14 +102,27 @@ exports.getWallet = (privateKey) => {
 };
 
 /**
- * Register identity on the blockchain
+ * Create identity on the blockchain
  */
-exports.registerIdentity = async (did, ipfsHash, ownerAddress) => {
+exports.createIdentity = async (did, ipfsHash, ownerAddress) => {
   try {
     logger.info(`Registering identity ${did} for ${ownerAddress} with hash ${ipfsHash}`);
     
     if (!identityRegistry) {
       throw new Error("Identity registry not initialized");
+    }
+    
+    // Check if identity already exists
+    try {
+      const exists = await identityRegistry.didExists(did);
+      if (exists) {
+        logger.warn(`Identity with DID ${did} already exists on blockchain`);
+        throw new Error(`Identity with DID ${did} already exists`);
+      }
+    } catch (checkError) {
+      if (!checkError.message.includes("already exists")) {
+        logger.warn(`Error checking if identity exists: ${checkError.message}`);
+      }
     }
     
     // Use the admin account for testing
@@ -122,17 +135,39 @@ exports.registerIdentity = async (did, ipfsHash, ownerAddress) => {
     // Connect the contract with the signer
     const contract = identityRegistry.connect(wallet);
     
-    // Call the contract method
-    logger.info("Calling registerIdentity on contract...");
-    const tx = await contract.createIdentity(did, ipfsHash, {
-      from: adminAddress,
-      gasLimit: 3000000
-    });
+    // Check contract function signature to ensure we're calling the right method
+    const functions = Object.keys(contract.functions)
+      .filter(fn => !fn.includes('('))
+      .map(fn => `${fn}: ${contract.interface.getSighash(fn)}`);
+    logger.info(`Available contract functions: ${functions.join(', ')}`);
+    
+    // Call the createIdentity function with correct parameters
+    // IMPORTANT: Check your contract to see if it needs 2 or 3 parameters!
+    logger.info("Calling createIdentity on contract...");
+    
+    // Try first with 2 parameters (did, ipfsHash)
+    let tx;
+    try {
+      tx = await contract.createIdentity(did, ipfsHash, {
+        gasLimit: 3000000
+      });
+    } catch (error) {
+      if (error.message.includes("incorrect number of arguments")) {
+        // Try with 3 parameters (did, ipfsHash, owner)
+        logger.info("Retrying with 3 parameters including owner address");
+        tx = await contract.createIdentity(did, ipfsHash, ownerAddress || adminAddress, {
+          gasLimit: 3000000
+        });
+      } else {
+        throw error;
+      }
+    }
     
     logger.info(`Transaction sent: ${tx.hash}`);
     
     // Wait for transaction to be mined
     const receipt = await tx.wait();
+    
     logger.info(`Identity registered with transaction hash: ${receipt.transactionHash}`);
     
     return receipt;
@@ -580,7 +615,7 @@ module.exports = {
   credentialRegistry,
   getWallet: exports.getWallet,
   createWallet: exports.createWallet,
-  registerIdentity: exports.registerIdentity,
+  createIdentity: exports.createIdentity,  // Changed from registerIdentity
   verifyIdentity: exports.verifyIdentity,
   getIdentity: exports.getIdentity,
   updateIdentityStatus: exports.updateIdentityStatus,

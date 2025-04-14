@@ -90,6 +90,34 @@ export const blockchainService = {
       console.error("Error getting wallet balance:", error);
       throw error.response?.data || { message: `Failed to get wallet balance for ${address}` };
     }
+  },
+
+  /**
+   * Get DIDs directly from blockchain (no Firebase)
+   */
+  getBlockchainDIDs: async () => {
+    try {
+      // Remove the duplicate '/api' prefix
+      const response = await apiClient.get('/blockchain/dids');
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching DIDs from blockchain:", error);
+      throw error.response?.data || { message: 'Failed to fetch DIDs from blockchain' };
+    }
+  },
+
+  /**
+   * Get contract ABIs
+   */
+  getContractABIs: async () => {
+    try {
+      // Remove the duplicate '/api' prefix - apiClient already includes the base URL
+      const response = await apiClient.get('/blockchain/contracts/abis');
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching contract ABIs:", error);
+      throw error.response?.data || { message: 'Failed to fetch contract ABIs' };
+    }
   }
 };
 

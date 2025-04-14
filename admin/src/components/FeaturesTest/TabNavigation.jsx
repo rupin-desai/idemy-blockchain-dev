@@ -5,7 +5,8 @@ const displayNames = {
   "forms": "Student Forms",
   "tables": "Student Records",
   "identities": "ID Management",
-  "blockchain": "Blockchain Ledger"
+  "blockchain": "Blockchain Ledger",
+  "explorer": "View Blockchain" // Added new tab
 };
 
 const TabNavigation = ({ activeTab, setActiveTab, tabs }) => {

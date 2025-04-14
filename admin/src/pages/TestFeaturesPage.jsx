@@ -23,6 +23,9 @@ import TestBlockchainStatus from "../components/FeaturesTest/TestBlockchainStatu
 import TestContractInteractions from "../components/FeaturesTest/TestContractInteractions";
 import TestTransaction from "../components/FeaturesTest/TestTransaction";
 
+// Blockchain Explorer Tab
+import TestBlockchainExplorer from "../components/FeaturesTest/TestBlockchainExplorer";
+
 // Blockchain hooks
 import useStudentIdentities from "../hooks/useStudentIdentities";
 import useBlockchainStatus from "../hooks/useBlockchainStatus";
@@ -124,6 +127,7 @@ const TestFeatures = () => {
         setActiveTab={setActiveTab}
         tabs={[
           { id: "blockchain", label: "Blockchain" },
+          { id: "explorer", label: "View Blockchain" },
           { id: "identities", label: "Create Identity" },
           { id: "tables", label: "Student Records" },
           { id: "forms", label: "Test Forms" }
@@ -175,6 +179,12 @@ const TestFeatures = () => {
             />
             <TestTransaction />
           </div>
+        </Card>
+      )}
+
+      {activeTab === "explorer" && (
+        <Card title="Ganache Blockchain Explorer">
+          <TestBlockchainExplorer />
         </Card>
       )}
     </div>

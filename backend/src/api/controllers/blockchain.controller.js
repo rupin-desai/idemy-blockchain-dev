@@ -5,6 +5,21 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const ethers = require('ethers');
 const firebaseService = require('../../services/firebase.service');
+const config = require('../../config');
+
+// Add this code before your controller methods to properly initialize the provider
+// This should be placed before your existing controller methods
+const getBlockchainProvider = () => {
+  try {
+    // Create provider instance connecting to Ganache
+    const provider = new ethers.providers.JsonRpcProvider(config.blockchain.provider || "http://127.0.0.1:8545");
+    logger.info(`Connected to blockchain provider at ${config.blockchain.provider || "http://127.0.0.1:8545"}`);
+    return provider;
+  } catch (error) {
+    logger.error("Failed to initialize blockchain provider:", error);
+    throw new Error("Could not connect to blockchain. Is Ganache running?");
+  }
+};
 
 /**
  * Get blockchain status and information
@@ -542,6 +557,183 @@ exports.verifyBlockchainIdentity = catchAsync(async (req, res) => {
     res.status(500).json({
       success: false,
       message: `Failed to verify identity: ${error.message}`
+    });
+  }
+});
+
+/**
+ * Get recent blocks from the blockchain
+ */
+exports.getBlocks = catchAsync(async (req, res) => {
+  try {
+    logger.info("Fetching recent blocks");
+    
+    // Get provider for this request
+    const provider = getBlockchainProvider();
+    
+    // Get the current block number
+    const currentBlock = await provider.getBlockNumber();
+    logger.info(`Current block number: ${currentBlock}`);
+    
+    // Fetch last 10 blocks (or fewer if we don't have 10 blocks yet)
+    const blockCount = Math.min(currentBlock + 1, 10);
+    const blocks = [];
+    
+    for (let i = currentBlock; i >= Math.max(0, currentBlock - blockCount + 1); i--) {
+      try {
+        const block = await provider.getBlock(i);
+        blocks.push({
+          number: block.number,
+          hash: block.hash,
+          parentHash: block.parentHash,
+          timestamp: block.timestamp,
+          transactions: block.transactions,
+          miner: block.miner,
+          gasUsed: block.gasUsed.toString(),
+          gasLimit: block.gasLimit.toString(),
+          size: block.size?.toString() || "0"
+        });
+      } catch (blockError) {
+        logger.error(`Error fetching block ${i}:`, blockError);
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: "Retrieved recent blocks",
+      data: blocks
+    });
+  } catch (error) {
+    logger.error("Failed to get blocks:", error);
+    res.status(503).json({
+      success: false,
+      message: `Failed to get blocks: ${error.message}`
+    });
+  }
+});
+
+/**
+ * Get details of a specific block
+ */
+exports.getBlockDetails = catchAsync(async (req, res) => {
+  try {
+    const { blockNumber } = req.params;
+    logger.info(`Fetching details for block ${blockNumber}`);
+    
+    // Get provider for this request
+    const provider = getBlockchainProvider();
+    
+    // Get block with transactions
+    const block = await provider.getBlockWithTransactions(parseInt(blockNumber));
+    
+    if (!block) {
+      return res.status(404).json({
+        success: false,
+        message: `Block ${blockNumber} not found`
+      });
+    }
+    
+    // Format the response
+    const formattedBlock = {
+      number: block.number,
+      hash: block.hash,
+      parentHash: block.parentHash,
+      timestamp: block.timestamp,
+      nonce: block.nonce,
+      difficulty: block.difficulty.toString(),
+      gasUsed: block.gasUsed.toString(),
+      gasLimit: block.gasLimit.toString(),
+      miner: block.miner,
+      size: block.size?.toString() || "0",
+      transactions: block.transactions.map(tx => ({
+        hash: tx.hash,
+        from: tx.from,
+        to: tx.to,
+        value: tx.value.toString(),
+        gas: tx.gasLimit.toString(),
+        gasPrice: tx.gasPrice.toString(),
+        nonce: tx.nonce
+      }))
+    };
+    
+    res.status(200).json({
+      success: true,
+      message: `Retrieved details for block ${blockNumber}`,
+      data: formattedBlock
+    });
+  } catch (error) {
+    logger.error(`Failed to get block ${req.params.blockNumber}:`, error);
+    res.status(503).json({
+      success: false,
+      message: `Failed to get block: ${error.message}`
+    });
+  }
+});
+
+/**
+ * Get details of a specific transaction
+ */
+exports.getTransactionDetails = catchAsync(async (req, res) => {
+  try {
+    const { hash } = req.params;
+    logger.info(`Fetching details for transaction ${hash}`);
+    
+    // Get provider for this request
+    const provider = getBlockchainProvider();
+    
+    // Get transaction
+    const tx = await provider.getTransaction(hash);
+    
+    if (!tx) {
+      return res.status(404).json({
+        success: false,
+        message: `Transaction ${hash} not found`
+      });
+    }
+    
+    // Get receipt for additional info
+    const receipt = await provider.getTransactionReceipt(hash);
+    
+    // Format the response
+    const formattedTx = {
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to,
+      value: tx.value.toString(),
+      gasPrice: tx.gasPrice.toString(),
+      gas: tx.gasLimit.toString(),
+      nonce: tx.nonce,
+      blockNumber: tx.blockNumber,
+      blockHash: tx.blockHash,
+      input: tx.data,
+      status: receipt ? (receipt.status ? "Success" : "Failed") : "Unknown",
+      gasUsed: receipt ? receipt.gasUsed.toString() : "0",
+      contractAddress: receipt ? receipt.contractAddress : null,
+      timestamp: null // Will be populated from block data
+    };
+    
+    // Get block for timestamp
+    if (tx.blockNumber) {
+      try {
+        const block = await provider.getBlock(tx.blockNumber);
+        if (block) {
+          formattedTx.timestamp = block.timestamp;
+        }
+      } catch (blockError) {
+        logger.error(`Error fetching block for transaction ${hash}:`, blockError);
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: `Retrieved details for transaction ${hash}`,
+      data: formattedTx
+    });
+  } catch (error) {
+    logger.error(`Failed to get transaction ${req.params.hash}:`, error);
+    res.status(503).json({
+      success: false,
+      message: `Failed to get transaction: ${error.message}`
     });
   }
 });

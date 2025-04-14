@@ -21,6 +21,17 @@ router.get('/identity/:did/verify',
   blockchainController.verifyBlockchainIdentity
 );
 
+// Add these new routes:
+
+// Get recent blocks
+router.get('/blocks', blockchainController.getBlocks);
+
+// Get block details
+router.get('/block/:blockNumber', blockchainController.getBlockDetails);
+
+// Get transaction details
+router.get('/transaction/:hash', blockchainController.getTransactionDetails);
+
 // Protected routes
 router.get(
   '/contracts/identity/verify',

@@ -6,13 +6,24 @@ class IdentityService {
   constructor() {
     this.provider = new Web3.providers.HttpProvider(config.blockchain.provider);
     this.web3 = new Web3(this.provider);
-
-    // Initialize contract if address is available
-    if (config.blockchain.contracts.identity.address) {
-      this.contract = new this.web3.eth.Contract(
-        Identity.abi,
-        config.blockchain.contracts.identity.address
-      );
+    
+    // Log connection attempt for debugging
+    console.log(`Attempting to connect to contract at ${config.blockchain.contracts.identity.address}`);
+    
+    // Check if address is available and correctly formatted
+    if (config.blockchain.contracts.identity.address && 
+        config.blockchain.contracts.identity.address.startsWith('0x')) {
+      try {
+        this.contract = new this.web3.eth.Contract(
+          Identity.abi,
+          config.blockchain.contracts.identity.address
+        );
+        console.log("Identity contract initialized successfully");
+      } catch (error) {
+        console.error("Failed to initialize Identity contract:", error);
+      }
+    } else {
+      console.error("Invalid identity contract address:", config.blockchain.contracts.identity.address);
     }
   }
 

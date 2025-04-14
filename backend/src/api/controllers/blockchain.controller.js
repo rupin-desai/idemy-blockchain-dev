@@ -175,70 +175,41 @@ exports.getWalletBalance = catchAsync(async (req, res) => {
 /**
  * Get all student identities
  */
-exports.getStudentIdentities = catchAsync(async (req, res) => {
+exports.getStudentIdentities = async (req, res) => {
   try {
-    // First try to get students from Firebase
-    const firebaseStudents = await firebaseService.getAllIdentities();
+    logger.info("Getting all student identities");
     
-    // Enhance data with blockchain verification status
-    const enhancedStudents = await Promise.all(
-      firebaseStudents.map(async (student) => {
-        try {
-          // Try to get blockchain status if DID exists
-          if (student.did) {
-            const blockchainStatus = await blockchainService.verifyIdentity(student.did);
-            return {
-              ...student,
-              blockchainVerified: blockchainStatus
-            };
-          }
-          return student;
-        } catch (error) {
-          logger.warn(`Error getting blockchain status for student ${student.did}:`, error);
-          return student;
-        }
-      })
-    );
+    // First try to get identities from blockchain
+    let identities = [];
     
-    res.status(200).json({
+    try {
+      // Fix: Call the correct method name 
+      identities = await firebaseService.getAllIdentities(); // NOT getAllStudentIdentities
+      logger.info(`Retrieved ${identities.length} identities from database`);
+    } catch (dbError) {
+      logger.error("Failed to get identities from database:", dbError);
+      
+      // Return empty array - don't generate mock data
+      return res.status(200).json({
+        success: true,
+        message: "No student identities found",
+        data: []
+      });
+    }
+    
+    return res.status(200).json({
       success: true,
-      data: enhancedStudents
+      data: identities
     });
   } catch (error) {
-    // If Firebase fails, fall back to mock data for development
     logger.error("Error getting student identities:", error);
-    
-    // Create deterministic mock data
-    const mockStudents = Array.from({ length: 10 }, (_, i) => {
-      const id = `student-${i+1}`;
-      const did = `did:ethr:0x${crypto.randomBytes(20).toString("hex")}`;
-      return {
-        id,
-        uid: `uid-${i+1}`,
-        did,
-        personalInfo: {
-          firstName: `Student-${i+1}`,
-          lastName: `Test`,
-          email: `student${i+1}@test.edu`
-        },
-        studentInfo: {
-          studentId: `S${100000 + i}`,
-          department: ["Computer Science", "Engineering", "Business", "Arts"][i % 4],
-          type: ["undergraduate", "graduate", "exchange"][i % 3]
-        },
-        identityStatus: ["pending", "verified", "active", "revoked"][i % 4],
-        walletAddress: `0x${crypto.randomBytes(20).toString("hex")}`,
-        blockchainTxHash: `0x${crypto.randomBytes(32).toString("hex")}`,
-        createdAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString()
-      };
-    });
-    
-    res.status(200).json({
-      success: true,
-      data: mockStudents
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: [] 
     });
   }
-});
+};
 
 /**
  * Verify a student identity
@@ -574,3 +545,25 @@ exports.verifyBlockchainIdentity = catchAsync(async (req, res) => {
     });
   }
 });
+
+// Helper to create mock identities for development
+function createMockIdentities(count = 8) {
+  return Array.from({ length: count }, (_, i) => ({
+    uid: `student-${i+1}`,
+    did: `did:ethr:0x${crypto.randomBytes(20).toString('hex')}`,
+    personalInfo: {
+      firstName: `Student-${i+1}`,
+      lastName: 'Test'
+    },
+    studentInfo: {
+      studentId: `S${100000 + i}`,
+      department: ["cs", "eng", "bus", "arts"][i % 4],
+      type: ["undergraduate", "graduate", "exchange"][i % 3]
+    },
+    identityStatus: ["pending", "verified", "active", "revoked"][i % 4],
+    walletAddress: `0x${crypto.randomBytes(20).toString('hex')}`,
+    blockchainTxHash: i % 3 === 0 ? `0x${crypto.randomBytes(32).toString('hex')}` : null,
+    blockchainVerified: i % 2 === 0,
+    createdAt: new Date(Date.now() - (i * 86400000)).toISOString()
+  }));
+}

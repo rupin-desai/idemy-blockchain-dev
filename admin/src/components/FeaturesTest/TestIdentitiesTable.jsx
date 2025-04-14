@@ -1,45 +1,174 @@
 import React, { useState, useEffect } from "react";
-import { Search, RefreshCw, ExternalLink, Eye } from "lucide-react";
-import useStudentIdentities from "../../hooks/useStudentIdentities";
+import {
+  Search,
+  RefreshCw,
+  ExternalLink,
+  Eye,
+  Clock,
+  Shield,
+  XCircle,
+  CheckCircle2,
+} from "lucide-react";
+import apiClient from "../../services/api.service";
 import Button from "../../ui/Button";
 
-const TestIdentitiesTable = () => {
-  const {
-    loading,
-    error,
-    students,
-    refreshData,
-    verifyStudent,
-    revokeStudent,
-  } = useStudentIdentities();
+const TestIdentitiesTable = ({ onVerifySuccess, onVerifyError }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [students, setStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [actionInProgress, setActionInProgress] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
+  // Fetch real student identities from blockchain
+  const fetchStudentsFromBlockchain = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch from blockchain API
+      const response = await apiClient.get("/blockchain/students");
+
+      if (response.data?.success) {
+        if (response.data.data && response.data.data.length > 0) {
+          setStudents(response.data.data.map(formatStudentData));
+          console.log(`Loaded ${response.data.data.length} student records`);
+        } else {
+          setStudents([]);
+          setError(
+            "No student identities found. Create some using the 'Create Identity' tab."
+          );
+        }
+      } else {
+        throw new Error("Invalid response format from server");
+      }
+    } catch (err) {
+      console.error("Failed to fetch from blockchain:", err);
+      setError(
+        err.message || "Failed to fetch student identities from blockchain"
+      );
+      setStudents([]); // Do NOT fall back to mock data
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format student data from API
+  const formatStudentData = (student) => {
+    return {
+      id: student.uid || student.id || `student-${Date.now()}`,
+      studentId: student.studentInfo?.studentId || "Unknown ID",
+      did: student.did || "did:ethr:0xunknown",
+      name:
+        `${student.personalInfo?.firstName || ""} ${
+          student.personalInfo?.lastName || ""
+        }`.trim() || "Unknown Student",
+      department:
+        mapDepartmentCode(student.studentInfo?.department) || "General",
+      type: student.studentInfo?.type || "undergraduate",
+      status: student.identityStatus || "pending",
+      blockchainTxHash: student.blockchainTxHash,
+      walletAddress: student.walletAddress,
+      createdAt: student.createdAt,
+      blockchainVerified: student.blockchainVerified || false,
+      ipfsHash: student.ipfsHash,
+    };
+  };
+
+  // Map department codes to full names
+  const mapDepartmentCode = (code) => {
+    const deptMap = {
+      cs: "Computer Science",
+      eng: "Engineering",
+      bus: "Business",
+      arts: "Arts",
+    };
+
+    return deptMap[code] || code;
+  };
+
+  // Create mock data for development
+  const createMockData = () => {
+    const mockStudents = Array.from({ length: 8 }, (_, i) => ({
+      id: `student-${i + 1}`,
+      studentId: `S${100000 + i}`,
+      did: `did:ethr:0x${Array(40)
+        .fill(0)
+        .map(() => Math.floor(Math.random() * 16).toString(16))
+        .join("")}`,
+      name: `Student-${i + 1} Test`,
+      department: ["Computer Science", "Engineering", "Business", "Arts"][
+        i % 4
+      ],
+      type: ["undergraduate", "graduate", "exchange"][i % 3],
+      status: ["pending", "verified", "active", "revoked"][i % 4],
+      blockchainTxHash:
+        i % 3 === 0
+          ? `0x${Array(64)
+              .fill(0)
+              .map(() => Math.floor(Math.random() * 16).toString(16))
+              .join("")}`
+          : null,
+      walletAddress: `0x${Array(40)
+        .fill(0)
+        .map(() => Math.floor(Math.random() * 16).toString(16))
+        .join("")}`,
+      createdAt: new Date(Date.now() - i * 86400000).toISOString(),
+      blockchainVerified: i % 2 === 0,
+    }));
+
+    setStudents(mockStudents);
+  };
+
+  // Filter students based on search term
   const filteredStudents = students.filter(
     (student) =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.studentId.toString().includes(searchTerm) ||
-      student.department.toLowerCase().includes(searchTerm.toLowerCase())
+      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.studentId
+        ?.toString()
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      student.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.did?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Handle verify student
   const handleVerify = async (did) => {
     try {
       setActionInProgress(did);
-      await verifyStudent(did);
-      alert("Student identity verified successfully");
+
+      // Call blockchain API to verify student
+      const response = await apiClient.post(
+        `/blockchain/identity/${did}/verify`
+      );
+
+      if (response.data?.success) {
+        // Refresh data to get updated status
+        fetchStudentsFromBlockchain();
+
+        // Notify parent component
+        if (onVerifySuccess) onVerifySuccess(did);
+        else alert("Student identity verified successfully on blockchain!");
+      } else {
+        throw new Error(response.data?.message || "Verification failed");
+      }
     } catch (error) {
       console.error("Failed to verify student:", error);
-      alert(
-        "Failed to verify student: " +
-          (error.response?.data?.message || error.message)
-      );
+
+      // Notify parent component or show alert
+      if (onVerifyError) onVerifyError(error.message);
+      else
+        alert(
+          "Failed to verify student: " +
+            (error.response?.data?.message || error.message)
+        );
     } finally {
       setActionInProgress(null);
     }
   };
 
+  // Handle revoke student
   const handleRevoke = async (did) => {
     if (
       !window.confirm("Are you sure you want to revoke this student identity?")
@@ -48,8 +177,19 @@ const TestIdentitiesTable = () => {
 
     try {
       setActionInProgress(did);
-      await revokeStudent(did);
-      alert("Student identity revoked successfully");
+
+      // Call blockchain API to revoke student
+      const response = await apiClient.post(
+        `/blockchain/identity/${did}/revoke`
+      );
+
+      if (response.data?.success) {
+        // Refresh data to get updated status
+        fetchStudentsFromBlockchain();
+        alert("Student identity revoked successfully");
+      } else {
+        throw new Error(response.data?.message || "Revocation failed");
+      }
     } catch (error) {
       console.error("Failed to revoke student:", error);
       alert(
@@ -61,27 +201,58 @@ const TestIdentitiesTable = () => {
     }
   };
 
+  // Handle view student card
   const handleViewCard = (student) => {
     setSelectedStudent(student);
     setViewModalOpen(true);
+
+    // Fetch additional blockchain data if available
+    if (student.did) {
+      fetchBlockchainDetails(student.did);
+    }
   };
 
+  // Fetch additional blockchain details for a student
+  const fetchBlockchainDetails = async (did) => {
+    try {
+      const response = await apiClient.get(
+        `/blockchain/identity/${did}/verify`
+      );
+
+      if (response.data?.success && response.data?.data) {
+        setSelectedStudent((prev) => ({
+          ...prev,
+          blockchainDetails: response.data.data,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch blockchain details:", error);
+    }
+  };
+
+  // Get blockchain explorer URL
   const getEtherscanUrl = (hash) => {
+    // Use local explorer in development, testnet in production
+    if (
+      process.env.NODE_ENV === "development" &&
+      /^http:\/\/localhost/.test(window.location.origin)
+    ) {
+      return `http://localhost:8545/tx/${hash}`;
+    }
     return `https://sepolia.etherscan.io/tx/${hash}`;
   };
 
-  const departmentColors = {
-    "Computer Science": "blue",
-    Engineering: "green",
-    Business: "purple",
-    Arts: "pink",
-    General: "gray",
+  // Format timestamp
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "Unknown";
+    const date = new Date(timestamp);
+    return date.toLocaleString();
   };
 
-  const getDepartmentColor = (dept) => {
-    const color = departmentColors[dept] || "gray";
-    return `bg-${color}-100 text-${color}-800`;
-  };
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchStudentsFromBlockchain();
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -90,7 +261,7 @@ const TestIdentitiesTable = () => {
         <Button
           size="sm"
           variant="outline"
-          onClick={refreshData}
+          onClick={fetchStudentsFromBlockchain}
           disabled={loading}
         >
           <RefreshCw
@@ -115,7 +286,7 @@ const TestIdentitiesTable = () => {
           <input
             type="text"
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
-            placeholder="Search by name, ID or department..."
+            placeholder="Search by name, ID, department, or DID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -151,7 +322,7 @@ const TestIdentitiesTable = () => {
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                   <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
-                  Loading student identities...
+                  Loading student identities from blockchain...
                 </td>
               </tr>
             )}
@@ -191,21 +362,46 @@ const TestIdentitiesTable = () => {
                   </span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      student.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : student.status === "verified"
-                        ? "bg-green-100 text-green-800"
-                        : student.status === "pending"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : student.status === "revoked"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {student.status}
-                  </span>
+                  <div className="flex items-center space-x-1">
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        student.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : student.status === "verified"
+                          ? "bg-green-100 text-green-800"
+                          : student.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : student.status === "revoked"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {student.status}
+                    </span>
+
+                    {/* Blockchain verification indicator */}
+                    {student.blockchainVerified && (
+                      <span
+                        className="inline-flex items-center bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full"
+                        title="Verified on blockchain"
+                      >
+                        <Shield size={10} className="mr-1" />
+                        Chain
+                      </span>
+                    )}
+
+                    {/* If has transaction hash but verification pending */}
+                    {student.blockchainTxHash &&
+                      !student.blockchainVerified && (
+                        <span
+                          className="inline-flex items-center bg-yellow-50 text-yellow-700 text-xs px-2 py-1 rounded-full"
+                          title="Transaction pending"
+                        >
+                          <Clock size={10} className="mr-1" />
+                          Pending
+                        </span>
+                      )}
+                  </div>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
@@ -248,6 +444,7 @@ const TestIdentitiesTable = () => {
                         target="_blank"
                         rel="noreferrer"
                         className="text-gray-600 hover:text-gray-900"
+                        title="View transaction on blockchain explorer"
                       >
                         <ExternalLink size={14} />
                       </a>
@@ -260,7 +457,7 @@ const TestIdentitiesTable = () => {
         </table>
       </div>
 
-      {/* Student Card Modal */}
+      {/* Student Card Modal with Blockchain Details */}
       {viewModalOpen && selectedStudent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md p-6 relative">
@@ -293,6 +490,11 @@ const TestIdentitiesTable = () => {
                 </div>
 
                 <div>
+                  <div className="text-sm text-gray-500">Type</div>
+                  <div className="font-medium">{selectedStudent.type}</div>
+                </div>
+
+                <div>
                   <div className="text-sm text-gray-500">DID</div>
                   <div className="font-mono text-xs break-all">
                     {selectedStudent.did}
@@ -301,7 +503,7 @@ const TestIdentitiesTable = () => {
 
                 {selectedStudent.walletAddress && (
                   <div>
-                    <div className="text-sm text-gray-500">Wallet</div>
+                    <div className="text-sm text-gray-500">Wallet Address</div>
                     <div className="font-mono text-xs break-all">
                       {selectedStudent.walletAddress}
                     </div>
@@ -325,6 +527,109 @@ const TestIdentitiesTable = () => {
                     {selectedStudent.status}
                   </div>
                 </div>
+
+                {selectedStudent.createdAt && (
+                  <div>
+                    <div className="text-sm text-gray-500">Created At</div>
+                    <div className="font-medium text-sm">
+                      {formatDate(selectedStudent.createdAt)}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-sm text-gray-500">Blockchain Status</div>
+                  <div className="flex items-center mt-1">
+                    {selectedStudent.blockchainVerified ? (
+                      <div className="flex items-center text-green-600">
+                        <CheckCircle2 size={14} className="mr-1" />
+                        Verified on blockchain
+                      </div>
+                    ) : selectedStudent.blockchainTxHash ? (
+                      <div className="flex items-center text-yellow-600">
+                        <Clock size={14} className="mr-1" />
+                        Pending verification
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-gray-600">
+                        <XCircle size={14} className="mr-1" />
+                        Not on blockchain
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedStudent.blockchainTxHash && (
+                  <div>
+                    <div className="text-sm text-gray-500">
+                      Transaction Hash
+                    </div>
+                    <div className="font-mono text-xs break-all">
+                      {selectedStudent.blockchainTxHash}
+                    </div>
+                  </div>
+                )}
+
+                {selectedStudent.ipfsHash && (
+                  <div>
+                    <div className="text-sm text-gray-500">IPFS Hash</div>
+                    <div className="font-mono text-xs break-all">
+                      {selectedStudent.ipfsHash}
+                    </div>
+                  </div>
+                )}
+
+                {/* Blockchain verification details */}
+                {selectedStudent.blockchainDetails && (
+                  <div className="border-t border-gray-200 pt-3 mt-1">
+                    <div className="text-sm font-medium text-gray-700 mb-2">
+                      Blockchain Verification
+                    </div>
+                    <div className="text-xs space-y-1">
+                      {selectedStudent.blockchainDetails.verified && (
+                        <>
+                          <div>
+                            <span className="text-gray-500">Status: </span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded ${
+                                selectedStudent.blockchainDetails.status ===
+                                "active"
+                                  ? "bg-green-100 text-green-800"
+                                  : selectedStudent.blockchainDetails.status ===
+                                    "suspended"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : selectedStudent.blockchainDetails.status ===
+                                    "revoked"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {selectedStudent.blockchainDetails.status}
+                            </span>
+                          </div>
+
+                          {selectedStudent.blockchainDetails.owner && (
+                            <div className="break-all">
+                              <span className="text-gray-500">Owner: </span>
+                              <span className="font-mono">
+                                {selectedStudent.blockchainDetails.owner}
+                              </span>
+                            </div>
+                          )}
+
+                          {selectedStudent.blockchainDetails.createdAt && (
+                            <div>
+                              <span className="text-gray-500">Created: </span>
+                              {formatDate(
+                                selectedStudent.blockchainDetails.createdAt
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

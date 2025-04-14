@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const initializeFirebase = require("../config/firebase.config");
+const logger = require('../utils/logger.util');
 
 // Initialize Firebase Admin SDK
 const firebaseAdmin = initializeFirebase();
@@ -103,25 +104,20 @@ class FirebaseService {
   // Identity Methods
   async createIdentity(identityData) {
     try {
-      // Add the identity to the identities collection
-      const ref = await this.db.collection("identities").add({
+      logger.info('Creating identity in Firebase:', JSON.stringify(identityData));
+      
+      // Actual Firebase code...
+      const docRef = await this.db.collection('identities').doc(identityData.uid || Math.random().toString(36).substring(2, 15));
+      await docRef.set({
         ...identityData,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
-
-      // Update or create the user record using set with merge option
-      await this.db.collection("users").doc(identityData.userId).set({
-        identityDid: identityData.did,
-        walletAddress: identityData.walletAddress,
-        profileCompleted: true,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });  // This will create the document if it doesn't exist
-
-      const doc = await ref.get();
-      return { id: ref.id, ...doc.data() };
+      
+      return { success: true, id: docRef.id };
     } catch (error) {
-      throw new Error(`Failed to create identity: ${error.message}`);
+      logger.error('Firebase error creating identity:', error);
+      throw new Error(`Failed to create identity in database: ${error.message}`);
     }
   }
 

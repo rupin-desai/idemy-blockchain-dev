@@ -42,19 +42,15 @@ const useStudentIdentities = () => {
 
         setStudents(formattedStudents);
       } else {
-        // Fallback to mock data for testing when API doesn't return proper data
-        createMockStudentData();
+        // Don't create mock data
+        setError("No student identities found in the system");
+        setStudents([]);
       }
     } catch (err) {
       console.error("Failed to fetch students:", err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to fetch student identities"
-      );
-
-      // Create mock data for development
-      createMockStudentData();
+      setError(err.response?.data?.message || err.message);
+      // Don't create mock data here either
+      setStudents([]);
     } finally {
       setLoading(false);
     }

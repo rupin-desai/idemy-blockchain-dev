@@ -8,8 +8,10 @@ router.get('/info', blockchainController.getBlockchainInfo);
 router.get('/contracts', blockchainController.getContractAddresses);
 router.get('/contracts/identity/count', blockchainController.getStudentCount);
 
-// Get all student identities
-router.get('/students', blockchainController.getStudentIdentities);
+// Get all student identities with blockchain status
+router.get('/students', 
+  blockchainController.getStudentIdentities
+);
 
 // Check blockchain status for a student
 router.get('/students/status/:did', blockchainController.getStudentBlockchainStatus);

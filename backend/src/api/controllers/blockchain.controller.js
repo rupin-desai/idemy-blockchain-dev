@@ -2,6 +2,9 @@ const { catchAsync } = require('../../utils/error-handler.util');
 const blockchainService = require('../../services/blockchain.service');
 const logger = require('../../utils/logger.util');
 const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
+const ethers = require('ethers');
+const firebaseService = require('../../services/firebase.service');
 
 /**
  * Get blockchain status and information
@@ -244,76 +247,6 @@ exports.verifyStudentIdentity = catchAsync(async (req, res) => {
   const { did } = req.params;
   
   try {
-    // Update identity status in Firebase
-    await firebaseService.updateIdentity(did, {
-      identityStatus: "verified",
-      verificationDate: new Date(),
-      verifiedBy: req.user.uid
-    });
-    
-    // In real implementation, update blockchain status
-    // For now, we'll just pretend it succeeded
-    logger.info(`Verified student identity ${did}`);
-    
-    res.status(200).json({
-      success: true,
-      message: "Student identity verified successfully",
-      data: {
-        did,
-        status: "verified"
-      }
-    });
-  } catch (error) {
-    logger.error(`Error verifying student identity ${did}:`, error);
-    res.status(500).json({
-      success: false,
-      message: `Failed to verify student identity: ${error.message}`
-    });
-  }
-});
-
-/**
- * Revoke a student identity
- */
-exports.revokeStudentIdentity = catchAsync(async (req, res) => {
-  const { did } = req.params;
-  
-  try {
-    // Update identity status in Firebase
-    await firebaseService.updateIdentity(did, {
-      identityStatus: "revoked",
-      revocationDate: new Date(),
-      revokedBy: req.user.uid
-    });
-    
-    // In real implementation, update blockchain status
-    // For now, we'll just pretend it succeeded
-    logger.info(`Revoked student identity ${did}`);
-    
-    res.status(200).json({
-      success: true,
-      message: "Student identity revoked successfully",
-      data: {
-        did,
-        status: "revoked"
-      }
-    });
-  } catch (error) {
-    logger.error(`Error revoking student identity ${did}:`, error);
-    res.status(500).json({
-      success: false,
-      message: `Failed to revoke student identity: ${error.message}`
-    });
-  }
-});
-
-/**
- * Verify a student identity
- */
-exports.verifyStudentIdentity = catchAsync(async (req, res) => {
-  const { did } = req.params;
-  
-  try {
     // 1. Update identity status in database
     await firebaseService.updateIdentity(did, {
       identityStatus: "verified",
@@ -488,6 +421,156 @@ exports.getStudentBlockchainStatus = catchAsync(async (req, res) => {
         verified: false,
         error: error.message
       }
+    });
+  }
+});
+
+/**
+ * Create a new identity on the blockchain
+ */
+exports.createIdentity = catchAsync(async (req, res) => {
+  try {
+    const identityData = req.body;
+    logger.info('Creating new student identity with data:', JSON.stringify(identityData));
+
+    // 1. Generate wallet if not provided
+    let walletAddress = identityData.walletAddress;
+    if (!walletAddress) {
+      // Create a deterministic wallet for testing purposes
+      // In production, you'd want to use a more secure approach
+      const wallet = ethers.Wallet.createRandom();
+      walletAddress = wallet.address;
+      logger.info('Generated new wallet address:', walletAddress);
+    }
+
+    // 2. Generate DID based on wallet address
+    const did = `did:ethr:${walletAddress}`;
+    logger.info('Generated DID:', did);
+
+    // 3. Create metadata for identity
+    const metadata = {
+      did,
+      personalInfo: identityData.personalInfo,
+      contactInfo: identityData.contactInfo,
+      studentInfo: identityData.studentInfo,
+      createdAt: new Date().toISOString()
+    };
+
+    // 4. Generate a mock IPFS hash (in production, you'd upload to IPFS)
+    const ipfsHash = `ipfs://${crypto
+      .createHash('sha256')
+      .update(JSON.stringify(metadata))
+      .digest('hex')}`;
+    logger.info('Generated mock IPFS hash:', ipfsHash);
+
+    // 5. Register identity on blockchain
+    logger.info('Attempting to register identity on blockchain');
+    let receipt;
+    try {
+      receipt = await blockchainService.registerIdentity(
+        did,
+        ipfsHash,
+        walletAddress
+      );
+      logger.info('Identity registered on blockchain:', receipt);
+    } catch (blockchainError) {
+      logger.error('Failed to register on blockchain:', blockchainError);
+      throw new Error(`Blockchain registration failed: ${blockchainError.message}`);
+    }
+
+    // 6. Save identity to database
+    try {
+      const uid = uuidv4();
+      await firebaseService.createIdentity({
+        uid,
+        did,
+        walletAddress,
+        personalInfo: identityData.personalInfo,
+        contactInfo: identityData.contactInfo,
+        studentInfo: identityData.studentInfo,
+        address: identityData.address || {},
+        blockchainTxHash: receipt.transactionHash,
+        ipfsHash,
+        identityStatus: 'pending',
+        createdAt: new Date().toISOString()
+      });
+      logger.info('Identity saved to database');
+    } catch (dbError) {
+      logger.error('Failed to save to database, but blockchain registration succeeded:', dbError);
+      // Continue since blockchain registration worked
+    }
+
+    // 7. Return success response
+    res.status(201).json({
+      success: true,
+      message: 'Identity created and registered on blockchain',
+      data: {
+        did,
+        walletAddress,
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        ipfsHash
+      }
+    });
+  } catch (error) {
+    logger.error('Error creating identity:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create identity'
+    });
+  }
+});
+
+/**
+ * Verify an identity on the blockchain
+ */
+exports.verifyBlockchainIdentity = catchAsync(async (req, res) => {
+  const { did } = req.params;
+  
+  try {
+    logger.info(`Verifying identity on blockchain: ${did}`);
+    
+    // Check if identity exists on blockchain
+    const exists = await blockchainService.verifyIdentity(did);
+    
+    if (exists) {
+      // Get details from blockchain
+      const identity = await blockchainService.getIdentity(did);
+      
+      // Format status based on numeric value
+      const status = identity.status === 1 ? "active" : 
+                     identity.status === 2 ? "suspended" : 
+                     identity.status === 3 ? "revoked" : "unknown";
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          verified: true,
+          message: `Identity ${did} exists on the blockchain`,
+          did,
+          status,
+          ipfsHash: identity.ipfsHash,
+          owner: identity.owner,
+          createdAt: identity.createdAt * 1000, // Convert to milliseconds
+          transactionHash: identity.transactionHash || null
+        }
+      });
+    } else {
+      res.status(200).json({
+        success: true,
+        data: {
+          verified: false,
+          message: `Identity ${did} does not exist on the blockchain`,
+          did
+        }
+      });
+    }
+  } catch (error) {
+    logger.error(`Failed to verify identity on blockchain: ${error}`);
+    
+    res.status(500).json({
+      success: false,
+      message: `Failed to verify identity: ${error.message}`
     });
   }
 });

@@ -438,6 +438,33 @@ class FirebaseService {
       throw new Error(`Query failed: ${error.message}`);
     }
   }
+
+  // Add this method to your Firebase service:
+
+  /**
+   * Create a new identity in Firebase
+   */
+  async createIdentity(identityData) {
+    try {
+      // For testing, just log the data instead of saving to Firebase
+      logger.info('Creating identity in Firebase:', JSON.stringify(identityData));
+      
+      // If you have Firebase configured, uncomment the following:
+      
+      const docRef = await this.db.collection('identities').doc(identityData.uid);
+      await docRef.set({
+        ...identityData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      
+      
+      return { success: true, id: identityData.uid };
+    } catch (error) {
+      logger.error('Firebase error creating identity:', error);
+      throw new Error(`Failed to create identity in database: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new FirebaseService();

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import Card from "../ui/Card";
+import { RefreshCw } from "lucide-react";
+import Button from "../ui/Button";
 
 // Common components
 import AlertNotification from "../components/FeaturesTest/AlertNotification";
@@ -21,48 +23,111 @@ import TestBlockchainStatus from "../components/FeaturesTest/TestBlockchainStatu
 import TestContractInteractions from "../components/FeaturesTest/TestContractInteractions";
 import TestTransaction from "../components/FeaturesTest/TestTransaction";
 
+// Blockchain hooks
+import useStudentIdentities from "../hooks/useStudentIdentities";
+import useBlockchainStatus from "../hooks/useBlockchainStatus";
+
 const TestFeatures = () => {
-  const [activeTab, setActiveTab] = useState("forms");
+  const [activeTab, setActiveTab] = useState("blockchain");
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState("success");
+  const [alertMessage, setAlertMessage] = useState("");
+  
+  // Get blockchain data
+  const { loading: blockchainLoading, networkInfo, refreshData: refreshBlockchain } = useBlockchainStatus();
+  const { refreshData: refreshIdentities } = useStudentIdentities();
 
-  const handleSubmitSuccess = () => {
+  const showSuccessAlert = (message) => {
     setAlertType("success");
+    setAlertMessage(message);
     setShowAlert(true);
 
     setTimeout(() => {
       setShowAlert(false);
-    }, 3000);
+    }, 5000);
   };
 
-  const handleError = () => {
+  const showErrorAlert = (message) => {
     setAlertType("error");
+    setAlertMessage(message);
     setShowAlert(true);
 
     setTimeout(() => {
       setShowAlert(false);
-    }, 3000);
+    }, 8000);
+  };
+
+  const handleRefresh = () => {
+    refreshBlockchain();
+    refreshIdentities();
+    showSuccessAlert("Blockchain data refreshed!");
+  };
+
+  const handleSubmitSuccess = () => {
+    showSuccessAlert("Operation completed successfully!");
+  };
+
+  const handleError = (message = "An error occurred. Please try again.") => {
+    showErrorAlert(message);
+  };
+
+  const handleIdentityCreated = (identity) => {
+    showSuccessAlert(`Identity created successfully with DID: ${identity.did}`);
+    refreshIdentities();
+    setActiveTab("tables"); // Switch to tables to see the new identity
+  };
+
+  const handleIdentityVerified = (did) => {
+    showSuccessAlert(`Identity ${did} verified on blockchain!`);
+    refreshIdentities();
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Test Features</h1>
-        <p className="text-gray-600 mt-1">
-          Test all components and features in one place
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Blockchain Test Features</h1>
+          <p className="text-gray-600 mt-1">
+            Create, verify and manage blockchain identities
+          </p>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          {networkInfo && (
+            <div className="text-sm text-gray-500 mr-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+              {networkInfo.name} - Block #{networkInfo.blockNumber}
+            </div>
+          )}
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh}
+            disabled={blockchainLoading}
+          >
+            <RefreshCw size={14} className={`mr-1 ${blockchainLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <AlertNotification
         show={showAlert}
         type={alertType}
+        message={alertMessage}
         onClose={() => setShowAlert(false)}
       />
 
       <TabNavigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        tabs={["forms", "tables", "identities", "blockchain"]}
+        tabs={[
+          { id: "blockchain", label: "Blockchain" },
+          { id: "identities", label: "Create Identity" },
+          { id: "tables", label: "Student Records" },
+          { id: "forms", label: "Test Forms" }
+        ]}
       />
 
       {activeTab === "forms" && (
@@ -73,8 +138,11 @@ const TestFeatures = () => {
       )}
 
       {activeTab === "tables" && (
-        <Card title="Data Tables">
-          <TestIdentitiesTable />
+        <Card title="Student Identity Records">
+          <TestIdentitiesTable 
+            onVerifySuccess={handleIdentityVerified}
+            onVerifyError={handleError}
+          />
           <TestTablePagination
             currentPage={1}
             totalPages={1}
@@ -86,8 +154,14 @@ const TestFeatures = () => {
 
       {activeTab === "identities" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <TestCreateIdentity />
-          <TestVerifyIdentity />
+          <TestCreateIdentity 
+            onSuccess={handleIdentityCreated} 
+            onError={handleError}
+          />
+          <TestVerifyIdentity 
+            onSuccess={handleIdentityVerified} 
+            onError={handleError}
+          />
         </div>
       )}
 
@@ -95,7 +169,10 @@ const TestFeatures = () => {
         <Card title="Blockchain Operations">
           <div className="space-y-6">
             <TestBlockchainStatus />
-            <TestContractInteractions />
+            <TestContractInteractions 
+              onSuccess={handleSubmitSuccess}
+              onError={handleError}
+            />
             <TestTransaction />
           </div>
         </Card>

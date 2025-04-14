@@ -14,6 +14,11 @@ router.get('/students', blockchainController.getStudentIdentities);
 // Check blockchain status for a student
 router.get('/students/status/:did', blockchainController.getStudentBlockchainStatus);
 
+// Verify an identity on the blockchain
+router.get('/identity/:did/verify', 
+  blockchainController.verifyBlockchainIdentity
+);
+
 // Protected routes
 router.get(
   '/contracts/identity/verify',
@@ -44,5 +49,12 @@ router.post('/students/verify/:did', authMiddleware.authenticate, blockchainCont
 
 // Revoke a student identity
 router.post('/students/revoke/:did', authMiddleware.authenticate, blockchainController.revokeStudentIdentity);
+
+// Create a new identity
+router.post('/identity/create', 
+  // Authentication middleware (uncomment if you want to require auth)
+  // authMiddleware.authenticate, 
+  blockchainController.createIdentity
+);
 
 module.exports = router;

@@ -25,20 +25,20 @@ const TestFeatures = () => {
   const [activeTab, setActiveTab] = useState("forms");
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState("success");
-  
+
   const handleSubmitSuccess = () => {
     setAlertType("success");
     setShowAlert(true);
-    
+
     setTimeout(() => {
       setShowAlert(false);
     }, 3000);
   };
-  
+
   const handleError = () => {
     setAlertType("error");
     setShowAlert(true);
-    
+
     setTimeout(() => {
       setShowAlert(false);
     }, 3000);
@@ -48,32 +48,34 @@ const TestFeatures = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Test Features</h1>
-        <p className="text-gray-600 mt-1">Test all components and features in one place</p>
+        <p className="text-gray-600 mt-1">
+          Test all components and features in one place
+        </p>
       </div>
-      
-      <AlertNotification 
-        show={showAlert} 
-        type={alertType} 
-        onClose={() => setShowAlert(false)} 
+
+      <AlertNotification
+        show={showAlert}
+        type={alertType}
+        onClose={() => setShowAlert(false)}
       />
-      
-      <TabNavigation 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        tabs={["forms", "tables", "identities", "blockchain"]} 
+
+      <TabNavigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        tabs={["forms", "tables", "identities", "blockchain"]}
       />
-      
+
       {activeTab === "forms" && (
-        <TestFormControls 
-          onSubmitSuccess={handleSubmitSuccess} 
-          onError={handleError} 
+        <TestFormControls
+          onSubmitSuccess={handleSubmitSuccess}
+          onError={handleError}
         />
       )}
-      
+
       {activeTab === "tables" && (
         <Card title="Data Tables">
           <TestIdentitiesTable />
-          <TestTablePagination 
+          <TestTablePagination
             currentPage={1}
             totalPages={1}
             totalItems={4}
@@ -81,14 +83,14 @@ const TestFeatures = () => {
           />
         </Card>
       )}
-      
+
       {activeTab === "identities" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <TestCreateIdentity />
           <TestVerifyIdentity />
         </div>
       )}
-      
+
       {activeTab === "blockchain" && (
         <Card title="Blockchain Operations">
           <div className="space-y-6">

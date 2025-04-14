@@ -1,17 +1,24 @@
 const express = require('express');
+const router = express.Router();
 const blockchainController = require('../controllers/blockchain.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 
-const router = express.Router();
-
 // Public routes
-router.get('/info', blockchainController.getNetworkInfo);
+router.get('/info', blockchainController.getBlockchainInfo);
+router.get('/contracts', blockchainController.getContractAddresses);
+router.get('/contracts/identity/count', blockchainController.getStudentCount);
 
 // Protected routes
 router.get(
-  '/wallet/balance/:address',
+  '/contracts/identity/verify',
   authMiddleware.authenticate,
-  blockchainController.getWalletBalance
+  blockchainController.verifyStudentRecords
+);
+
+router.get(
+  '/contracts/card/validate',
+  authMiddleware.authenticate,
+  blockchainController.checkCardValidity
 );
 
 router.post(
@@ -20,10 +27,10 @@ router.post(
   blockchainController.createWallet
 );
 
-router.post(
-  '/send',
+router.get(
+  '/wallet/balance/:address',
   authMiddleware.authenticate,
-  blockchainController.sendTransaction
+  blockchainController.getWalletBalance
 );
 
 module.exports = router;

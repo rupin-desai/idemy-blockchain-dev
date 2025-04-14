@@ -1,8 +1,14 @@
 import React from "react";
+import { RefreshCw, AlertCircle, Check } from "lucide-react";
 import useBlockchainStatus from "../../hooks/useBlockchainStatus";
+import Button from "../../ui/Button";
 
 const TestBlockchainStatus = () => {
-  const { loading, error, networkInfo, recordsCount } = useBlockchainStatus();
+  const { loading, error, networkInfo, recordsCount, refreshData } = useBlockchainStatus();
+
+  const handleRefresh = () => {
+    refreshData();
+  };
 
   if (loading) {
     return (
@@ -29,12 +35,13 @@ const TestBlockchainStatus = () => {
             : `Error: ${error}`}
         </p>
         <div className="flex">
-          <button 
-            onClick={() => window.location.reload()} 
+          <Button 
+            onClick={handleRefresh} 
             className="mt-2 text-xs bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded-full"
           >
+            <RefreshCw size={12} className="mr-1" />
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -42,24 +49,36 @@ const TestBlockchainStatus = () => {
 
   return (
     <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-      <h3 className="font-medium text-blue-800 mb-2">Student Blockchain Status</h3>
+      <div className="flex justify-between mb-2">
+        <h3 className="font-medium text-blue-800">Student Blockchain Status</h3>
+        <Button 
+          size="sm" 
+          variant="ghost"
+          onClick={handleRefresh}
+          className="text-blue-600 hover:text-blue-800 p-1"
+        >
+          <RefreshCw size={14} />
+        </Button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
-          <p className="text-xs text-blue-600 mb-1">University Network</p>
-          <p className="font-mono font-medium">{networkInfo?.networkId || 'N/A'}</p>
+          <p className="text-xs text-blue-600 mb-1">Network</p>
+          <p className="font-mono font-medium">
+            {networkInfo?.name || 'Unknown'} ({networkInfo?.chainId || 'N/A'})
+          </p>
         </div>
         <div>
           <p className="text-xs text-blue-600 mb-1">Student Records</p>
-          <p className="font-mono font-medium">{recordsCount}</p>
+          <p className="font-mono font-medium">{recordsCount || 0}</p>
         </div>
         <div>
           <p className="text-xs text-blue-600 mb-1">Gas Price</p>
           <p className="font-mono font-medium">{networkInfo?.gasPrice || 'N/A'} Gwei</p>
         </div>
         <div>
-          <p className="text-xs text-blue-600 mb-1">Blockchain Status</p>
+          <p className="text-xs text-blue-600 mb-1">Status</p>
           <p className="flex items-center">
-            <span className={`inline-block w-2 h-2 rounded-full ${networkInfo ? 'bg-green-500' : 'bg-red-500'} mr-2`}></span>
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
             <span className="font-medium">{networkInfo ? 'Connected' : 'Disconnected'}</span>
           </p>
         </div>
@@ -67,7 +86,7 @@ const TestBlockchainStatus = () => {
       {networkInfo && (
         <div className="mt-3 text-xs text-blue-600">
           <p>Provider: {networkInfo.provider}</p>
-          <p>Block #: {networkInfo.blockNumber}</p>
+          <p>Current Block: {networkInfo.blockNumber}</p>
         </div>
       )}
     </div>

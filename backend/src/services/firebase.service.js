@@ -228,6 +228,83 @@ class FirebaseService {
     }
   }
 
+  // Add this method to your Firebase service
+
+  /**
+   * Get all identities
+   */
+  async getAllIdentities() {
+    try {
+      const snapshot = await this.db.collection("identities").get();
+      const identities = [];
+      
+      snapshot.forEach((doc) => {
+        identities.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      return identities;
+    } catch (error) {
+      throw new Error(`Failed to get identities: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get identity by DID
+   */
+  async getIdentityByDID(did) {
+    try {
+      const snapshot = await this.db.collection("identities").where("did", "==", did).get();
+      
+      if (snapshot.empty) {
+        throw new Error(`Identity with DID ${did} not found`);
+      }
+      
+      let identity = null;
+      
+      snapshot.forEach((doc) => {
+        identity = {
+          id: doc.id,
+          ...doc.data()
+        };
+      });
+      
+      return identity;
+    } catch (error) {
+      throw new Error(`Failed to get identity: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update identity
+   */
+  async updateIdentity(did, data) {
+    try {
+      const snapshot = await this.db.collection("identities").where("did", "==", did).get();
+      
+      if (snapshot.empty) {
+        throw new Error(`Identity with DID ${did} not found`);
+      }
+      
+      const batch = this.db.batch();
+      
+      snapshot.forEach((doc) => {
+        batch.update(doc.ref, {
+          ...data,
+          updatedAt: new Date()
+        });
+      });
+      
+      await batch.commit();
+      
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to update identity: ${error.message}`);
+    }
+  }
+
   // Document Methods
   async createDocument(documentData) {
     try {

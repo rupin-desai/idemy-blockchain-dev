@@ -6,6 +6,12 @@ const useBlockchainStatus = () => {
   const [error, setError] = useState(null);
   const [networkInfo, setNetworkInfo] = useState(null);
   const [recordsCount, setRecordsCount] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Function to manually refresh data
+  const refreshData = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   useEffect(() => {
     const fetchBlockchainStatus = async () => {
@@ -13,29 +19,36 @@ const useBlockchainStatus = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch network information
+        // Fetch network information from API (real Ganache data)
         const networkResponse = await apiClient.get("/blockchain/info");
         setNetworkInfo(networkResponse.data.data);
 
-        // You can add another endpoint to get identity count
-        // For now we'll mock this with a random number
-        setRecordsCount(Math.floor(Math.random() * 100) + 1);
+        // Fetch student count from API (real contract data)
+        const countResponse = await apiClient.get(
+          "/blockchain/contracts/identity/count"
+        );
+        setRecordsCount(countResponse.data.data.count);
       } catch (err) {
         console.error("Failed to fetch blockchain status:", err);
-        setError(err.message || "Failed to fetch blockchain status");
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Failed to fetch blockchain status"
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchBlockchainStatus();
-  }, []);
+  }, [refreshTrigger]);
 
   return {
     loading,
     error,
     networkInfo,
     recordsCount,
+    refreshData,
   };
 };
 

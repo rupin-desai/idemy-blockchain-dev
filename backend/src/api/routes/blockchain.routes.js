@@ -8,6 +8,12 @@ router.get('/info', blockchainController.getBlockchainInfo);
 router.get('/contracts', blockchainController.getContractAddresses);
 router.get('/contracts/identity/count', blockchainController.getStudentCount);
 
+// Get all student identities
+router.get('/students', blockchainController.getStudentIdentities);
+
+// Check blockchain status for a student
+router.get('/students/status/:did', blockchainController.getStudentBlockchainStatus);
+
 // Protected routes
 router.get(
   '/contracts/identity/verify',
@@ -32,5 +38,11 @@ router.get(
   authMiddleware.authenticate,
   blockchainController.getWalletBalance
 );
+
+// Verify a student identity
+router.post('/students/verify/:did', authMiddleware.authenticate, blockchainController.verifyStudentIdentity);
+
+// Revoke a student identity
+router.post('/students/revoke/:did', authMiddleware.authenticate, blockchainController.revokeStudentIdentity);
 
 module.exports = router;

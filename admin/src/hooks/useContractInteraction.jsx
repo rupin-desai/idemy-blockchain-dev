@@ -17,6 +17,7 @@ const useContractInteraction = () => {
     try {
       setLoading(true);
       setError(null);
+
       const response = await contractService.getContractAddresses();
 
       setContracts({
@@ -26,7 +27,12 @@ const useContractInteraction = () => {
 
       return response.data;
     } catch (err) {
-      setError(err.message || "Failed to fetch contract addresses");
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to fetch contract addresses"
+      );
+      console.error("Contract address fetch error:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -38,11 +44,18 @@ const useContractInteraction = () => {
     try {
       setLoading(true);
       setError(null);
+
       const response = await contractService.verifyStudentRecords();
       setVerificationResult(response.data);
+
       return response.data;
     } catch (err) {
-      setError(err.message || "Failed to verify student records");
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to verify student records"
+      );
+      console.error("Verification error:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -54,11 +67,18 @@ const useContractInteraction = () => {
     try {
       setLoading(true);
       setError(null);
+
       const response = await contractService.checkCardValidity(studentId);
       setCardValidityResult(response.data);
+
       return response.data;
     } catch (err) {
-      setError(err.message || "Failed to check card validity");
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to check card validity"
+      );
+      console.error("Card validity check error:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -70,11 +90,19 @@ const useContractInteraction = () => {
     try {
       setLoading(true);
       setError(null);
+
       const response = await contractService.getStudentCount();
-      setStudentCount(response.data?.count || 0);
-      return response.data;
+      const count = response.data?.count || 0;
+      setStudentCount(count);
+
+      return count;
     } catch (err) {
-      setError(err.message || "Failed to get student count");
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to get student count"
+      );
+      console.error("Student count fetch error:", err);
       throw err;
     } finally {
       setLoading(false);

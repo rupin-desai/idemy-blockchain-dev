@@ -22,15 +22,32 @@ exports.authenticate = catchAsync(async (req, res, next) => {
     throw new AppError('Invalid or expired token', 401);
   }
   
-  // Get user profile
-  const userProfile = await firebaseService.getUserProfile(decoded.uid);
+  // Check if this is a development-generated token
+  const isDevelopmentToken = process.env.NODE_ENV === 'development' && 
+                           decoded.uid === 'dev-admin-uid';
   
-  if (!userProfile) {
-    throw new AppError('User not found', 401);
-  }
+  let userProfile;
   
-  if (!userProfile.isActive) {
-    throw new AppError('Account is deactivated', 403);
+  if (isDevelopmentToken) {
+    // For development token, create a mock user profile
+    userProfile = {
+      uid: 'dev-admin-uid',
+      email: 'admin@university.edu',
+      displayName: 'System Administrator',
+      role: 'admin',
+      isActive: true
+    };
+  } else {
+    // Get user profile from Firestore for normal users
+    userProfile = await firebaseService.getUserProfile(decoded.uid);
+    
+    if (!userProfile) {
+      throw new AppError('User not found', 401);
+    }
+    
+    if (!userProfile.isActive) {
+      throw new AppError('Account is deactivated', 403);
+    }
   }
   
   // Set user in request

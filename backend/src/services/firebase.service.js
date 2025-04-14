@@ -103,19 +103,20 @@ class FirebaseService {
   // Identity Methods
   async createIdentity(identityData) {
     try {
+      // Add the identity to the identities collection
       const ref = await this.db.collection("identities").add({
         ...identityData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Also update the user record
-      await this.db.collection("users").doc(identityData.userId).update({
+      // Update or create the user record using set with merge option
+      await this.db.collection("users").doc(identityData.userId).set({
         identityDid: identityData.did,
         walletAddress: identityData.walletAddress,
         profileCompleted: true,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      }, { merge: true });  // This will create the document if it doesn't exist
 
       const doc = await ref.get();
       return { id: ref.id, ...doc.data() };

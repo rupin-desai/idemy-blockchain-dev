@@ -1,17 +1,17 @@
-import React, { useState, useEffect }c fromd "react";
-import { Search, Filter, Plus, X } from "lucide-react";
-import  Card from "../ui/Card";
+import React, { useState, useEffect } from "react";
+import { Search, Filter, Plus, X, AlertCircle } from "lucide-react";
+import Card from "../ui/Card";
 import Button from "../ui/Button";
 import IdentitiesList from "../components/identities/IdentitiesList";
 import TestCreateIdentity from "../components/FeaturesTest/TestCreateIdentity";
 import useStudentIdentity from "../hooks/useStudentIdentity";
 
 const IdentitiesPage = () => {
-  const { fetchStudentIdentities. } = useStudentIdentity();
+  const { fetchStudentIdentities } = useStudentIdentity();
   
   // UI states
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showFilters,. setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,6 +29,8 @@ const IdentitiesPage = () => {
     totalPages: 0
   });
   
+  const [error, setError] = useState(null);
+  
   // Handle search with debounce
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -45,6 +47,7 @@ const IdentitiesPage = () => {
   
   const fetchIdentities = async () => {
     try {
+      setError(null);
       // Prepare query parameters
       const queryParams = {
         page: pagination.page,
@@ -69,8 +72,12 @@ const IdentitiesPage = () => {
           totalPages: result.pagination.pages
         });
       }
-    } catch (error) {
-      console.error("Failed to fetch identities:", error);
+    } catch (err) {
+      console.error("Failed to fetch identities:", err);
+      setError(err.isFirestoreError ? 
+        "Cloud Firestore API access denied. Please ensure the Firestore database is properly set up and permissions are configured." :
+        err.message || "Failed to load student records"
+      );
     }
   };
   
@@ -113,6 +120,22 @@ const IdentitiesPage = () => {
           {showCreateForm ? "Hide Form" : "Create Student ID"}
         </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 flex items-start">
+          <AlertCircle className="h-5 w-5 mt-0.5 mr-2 flex-shrink-0" />
+          <div>
+            <h3 className="font-medium">Error loading data</h3>
+            <p className="text-sm">{error}</p>
+            <button 
+              onClick={fetchIdentities}
+              className="mt-2 text-sm text-red-700 hover:text-red-900 font-medium underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCreateForm && (
         <TestCreateIdentity onSuccess={() => fetchIdentities()} />
@@ -209,8 +232,8 @@ const IdentitiesPage = () => {
 
         <IdentitiesList 
           refreshIdentities={fetchIdentities} 
-          // Pass filters to allow component to use them if needed
           filters={{ searchTerm, ...filters }}
+          error={error}
         />
         
         <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4">

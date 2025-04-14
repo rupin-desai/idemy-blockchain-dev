@@ -11,20 +11,19 @@ const apiClient = axios.create({
   }
 });
 
-// Retrieve token from localStorage directly instead of importing authService
-const getToken = () => localStorage.getItem('idemy_auth_token');
-
-// Initialize the Authorization header if token exists
-const token = getToken();
-if (token) {
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-}
+// Function to update authorization header
+export const setAuthToken = (token) => {
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+};
 
 // Request interceptor for adding auth token
 apiClient.interceptors.request.use(
   (config) => {
-    // Get the most recent token on every request
-    const token = getToken();
+    const token = localStorage.getItem('idemy_auth_token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -39,11 +38,25 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Handle authentication errors
+    // Check if error contains Firestore permission denied message
+    const isFirestorePermissionError = 
+      error.response?.data?.message?.includes('PERMISSION_DENIED: Cloud Firestore API') ||
+      error.message?.includes('PERMISSION_DENIED: Cloud Firestore API');
+    
+    // If Firestore permission error, don't redirect to login
+    if (isFirestorePermissionError) {
+      return Promise.reject({
+        ...error,
+        isFirestoreError: true,
+        message: 'Firestore access denied. The database may not be properly initialized.'
+      });
+    }
+    
+    // If the error is 401 and not already retrying and not a Firestore error
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      // If token validation fails, redirect to login
+      // Redirect to login page and clear auth data
       localStorage.removeItem('idemy_auth_token');
       localStorage.removeItem('idemy_user');
       window.location.href = '/login';
@@ -52,14 +65,5 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Function to update authorization header
-export const setAuthToken = (token) => {
-  if (token) {
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete apiClient.defaults.headers.common['Authorization'];
-  }
-};
 
 export default apiClient;

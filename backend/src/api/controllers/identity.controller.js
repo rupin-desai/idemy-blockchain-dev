@@ -5,12 +5,15 @@ const { catchAsync, AppError } = require('../../utils/error-handler.util');
  * Create a new identity
  */
 exports.createIdentity = catchAsync(async (req, res) => {
-  const { personalInfo, address, contactInfo, walletAddress } = req.body;
+  const { personalInfo, address, contactInfo, walletAddress, studentInfo } = req.body;
   const { uid } = req.user;
+  
+  // For development - allow admin to create identities
+  console.log("Creating new identity with user UID:", uid);
   
   // Create identity
   const identity = await ssiService.createIdentity(
-    { personalInfo, address, contactInfo, walletAddress },
+    { personalInfo, address, contactInfo, walletAddress, studentInfo },
     uid
   );
   

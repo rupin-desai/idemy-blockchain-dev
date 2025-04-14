@@ -13,15 +13,28 @@ export const AuthProvider = ({ children }) => {
     const init = async () => {
       try {
         const user = authService.getCurrentUser();
-        // Verify token is valid with a lightweight API call
+        // If user exists in localStorage, trust it without validation during development
         if (user && authService.isAuthenticated()) {
-          await authService.validateToken();
-          setCurrentUser(user);
+          // In development, skip token validation to prevent logout on refresh
+          if (import.meta.env.DEV) {
+            setCurrentUser(user);
+          } else {
+            // In production, validate the token
+            try {
+              await authService.validateToken();
+              setCurrentUser(user);
+            } catch (validationError) {
+              console.error("Token validation failed:", validationError);
+              authService.logout();
+            }
+          }
         }
       } catch (error) {
-        console.error("Token validation failed:", error);
-        // If token validation fails, logout
-        authService.logout();
+        console.error("Auth initialization error:", error);
+        // Only logout if not in development
+        if (!import.meta.env.DEV) {
+          authService.logout();
+        }
       } finally {
         setLoading(false);
       }

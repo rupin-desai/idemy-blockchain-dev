@@ -3,10 +3,9 @@ import { Eye, Edit, AlertCircle } from "lucide-react";
 import useStudentIdentity from "../../hooks/useStudentIdentity";
 import Button from "../../ui/Button";
 
-const IdentitiesList = ({ refreshIdentities, filters = {} }) => {
+const IdentitiesList = ({ refreshIdentities, filters = {}, error }) => {
   const {
     loading,
-    error,
     studentIdentities,
     fetchStudentIdentities,
     verifyStudentIdentity,
@@ -32,14 +31,18 @@ const IdentitiesList = ({ refreshIdentities, filters = {} }) => {
     }
   };
 
+  if (error) {
+    return null; // Error is already displayed in parent component
+  }
+
   if (loading) {
     return <div className="text-center py-10">Loading student records...</div>;
   }
 
-  if (error) {
+  if (studentIdentities.length === 0) {
     return (
-      <div className="bg-red-100 p-4 rounded-md text-red-800">
-        Error loading student records: {error}
+      <div className="text-center py-10 text-gray-500">
+        No student records found. Try adjusting your search or filter criteria.
       </div>
     );
   }

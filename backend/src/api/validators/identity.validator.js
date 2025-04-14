@@ -32,6 +32,21 @@ const contactInfoSchema = Joi.object({
     .required(),
 });
 
+// Student info validation schema
+const studentInfoSchema = Joi.object({
+  department: Joi.string().required().messages({
+    "any.required": "Department is required",
+  }),
+  studentId: Joi.string()
+    .pattern(/^[A-Za-z0-9]+$/)
+    .required()
+    .messages({
+      "string.pattern.base":
+        "Student ID must contain only alphanumeric characters",
+      "any.required": "Student ID is required",
+    }),
+});
+
 // Create identity validation schema
 const createIdentitySchema = Joi.object({
   personalInfo: personalInfoSchema.required(),
@@ -43,12 +58,14 @@ const createIdentitySchema = Joi.object({
     .messages({
       "string.pattern.base": "Wallet address must be a valid Ethereum address",
     }),
+  studentInfo: studentInfoSchema.optional(),
 });
 
 // Update identity validation schema
 const updateIdentitySchema = Joi.object({
   address: addressSchema.optional(),
   contactInfo: contactInfoSchema.optional(),
+  studentInfo: studentInfoSchema.optional(),
 });
 
 // Verify identity validation schema
@@ -70,4 +87,5 @@ module.exports = {
   personalInfoSchema,
   addressSchema,
   contactInfoSchema,
+  studentInfoSchema,
 };

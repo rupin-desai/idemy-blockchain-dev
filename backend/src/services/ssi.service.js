@@ -9,22 +9,41 @@ const ipfsService = require("./ipfs.service");
 const blockchainService = require("../blockchain/services/blockchain.service");
 const identityService = require("../blockchain/services/identity.service");
 const { v4: uuidv4 } = require("uuid");
+const ethers = require('ethers');
+const crypto = require('crypto');
+const logger = require('../utils/logger.util');
 
 class SSIService {
   /**
-   * Create a new DID
-   * @param {String} walletAddress - Ethereum wallet address
+   * Create DID from wallet address
    */
   async createDID(walletAddress) {
     try {
-      // Generate a new DID using the wallet address
-      const did = await didUtil.generateDid(walletAddress);
-
+      // For testing, we'll use a mock DID based on the wallet address
+      console.log(`Creating DID for wallet address: ${walletAddress}`);
+      
+      // Generate the private key for DID generation using ethers
+      // Use a deterministic approach for development 
+      const privateKeyData = ethers.utils.toUtf8Bytes(`${walletAddress}${process.env.SECRET_KEY}`);
+      
+      // Hash the data to ensure we get 32 bytes
+      const hash = ethers.utils.keccak256(privateKeyData);
+      
+      // Create or get a wallet instance with proper private key length (32 bytes)
+      const wallet = new ethers.Wallet(hash);
+      
+      // Create DID using the ethr-did library
+      const did = `did:ethr:${wallet.address}`;
+      
+      console.log(`Created DID: ${did}`);
+      
       return {
         did,
-        walletAddress,
+        publicKey: wallet.address,
+        privateKey: wallet.privateKey
       };
     } catch (error) {
+      console.error('Failed to create DID:', error);
       throw new Error(`Failed to create DID: ${error.message}`);
     }
   }
@@ -36,15 +55,20 @@ class SSIService {
    */
   async createIdentity(identityData, uid) {
     try {
+      console.log("Creating identity for user:", uid);
+      console.log("Identity data:", JSON.stringify(identityData, null, 2));
+      
       // Get wallet address or create new one
       let walletAddress = identityData.walletAddress;
       if (!walletAddress) {
         const wallet = await blockchainService.createWallet();
         walletAddress = wallet.address;
+        console.log("Created new wallet address:", walletAddress);
       }
 
       // Generate DID
       const { did } = await this.createDID(walletAddress);
+      console.log("Generated DID:", did);
 
       // Prepare identity metadata for IPFS
       const identityMetadata = {
@@ -52,20 +76,29 @@ class SSIService {
         personalInfo: identityData.personalInfo,
         address: identityData.address,
         contactInfo: identityData.contactInfo,
+        studentInfo: identityData.studentInfo || {
+          department: "cs",
+          studentId: "ST" + Math.floor(10000 + Math.random() * 90000)
+        },
         createdAt: new Date().toISOString(),
       };
 
       // Upload metadata to IPFS
+      console.log("Uploading metadata to IPFS...");
       const ipfsHash = await ipfsService.uploadJSON(identityMetadata);
+      console.log("Uploaded to IPFS, hash:", ipfsHash);
 
       // Save identity to blockchain
+      console.log("Saving identity to blockchain...");
       const txReceipt = await identityService.createIdentity(
         did,
         ipfsHash,
         walletAddress
       );
+      console.log("Blockchain transaction receipt:", txReceipt.transactionHash);
 
       // Create identity in Firebase
+      console.log("Creating identity in Firebase...");
       const identity = await firebaseService.createIdentity({
         did,
         userId: uid,
@@ -73,13 +106,19 @@ class SSIService {
         personalInfo: identityData.personalInfo,
         address: identityData.address,
         contactInfo: identityData.contactInfo,
+        studentInfo: identityData.studentInfo || {
+          department: "cs",
+          studentId: "ST" + Math.floor(10000 + Math.random() * 90000)
+        },
         identityStatus: "pending",
         ipfsMetadataHash: ipfsHash,
         blockchainTxHash: txReceipt.transactionHash,
       });
+      console.log("Identity created successfully in Firebase");
 
       return identity;
     } catch (error) {
+      console.error("Identity creation error:", error);
       throw new Error(`Failed to create identity: ${error.message}`);
     }
   }
@@ -167,6 +206,19 @@ class SSIService {
    */
   async verifyIdentity(did, status, verifierId) {
     try {
+      // Special handling for development admin user
+      if (process.env.NODE_ENV === 'development' && verifierId === 'dev-admin-uid') {
+        // Update identity status without requiring the verifier to exist
+        const updatedIdentity = await firebaseService.updateIdentity(did, {
+          identityStatus: status,
+          verificationDate: new Date(),
+          verifiedBy: verifierId,
+        });
+
+        return updatedIdentity;
+      }
+      
+      // Standard flow for regular users
       // Update identity status
       const updatedIdentity = await firebaseService.updateIdentity(did, {
         identityStatus: status,

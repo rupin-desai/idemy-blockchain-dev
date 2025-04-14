@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import identityService from "../services/identity.service";
+import { useAuth } from "../contexts/AuthContext";
 
 const useStudentIdentity = () => {
   const [loading, setLoading] = useState(false);
@@ -7,13 +8,14 @@ const useStudentIdentity = () => {
   const [studentIdentity, setStudentIdentity] = useState(null);
   const [studentIdentities, setStudentIdentities] = useState([]);
   const [paginationData, setPaginationData] = useState({
+    total: 0,
     page: 1,
     limit: 10,
-    total: 0,
-    pages: 1,
+    pages: 0,
   });
+  const { currentUser } = useAuth();
 
-  // Create new student identity
+  // Create student identity
   const createStudentIdentity = useCallback(async (identityData) => {
     setLoading(true);
     setError(null);
@@ -38,14 +40,12 @@ const useStudentIdentity = () => {
     try {
       const result = await identityService.listIdentities(params);
 
-      // Update identities
       if (Array.isArray(result.data.identities)) {
         setStudentIdentities(result.data.identities);
       } else if (Array.isArray(result.data)) {
         setStudentIdentities(result.data);
       }
 
-      // Update pagination if available
       if (result.data.pagination) {
         setPaginationData(result.data.pagination);
       }
@@ -58,39 +58,14 @@ const useStudentIdentity = () => {
       };
     } catch (err) {
       setError(err.message || "Failed to fetch student identities");
+      setStudentIdentities([]);
       throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Verify a student identity (admin/issuer)
-  const verifyStudentIdentity = useCallback(async (did, status) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await identityService.verifyIdentity(did, status);
-
-      // Update local state to reflect the change
-      setStudentIdentities((prevIdentities) =>
-        prevIdentities.map((identity) =>
-          identity.did === did
-            ? { ...identity, identityStatus: status }
-            : identity
-        )
-      );
-
-      return result.data;
-    } catch (err) {
-      setError(err.message || "Failed to verify student identity");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Get a specific student identity
+  // Get specific student identity by DID
   const fetchStudentIdentity = useCallback(async (did) => {
     setLoading(true);
     setError(null);
@@ -106,6 +81,29 @@ const useStudentIdentity = () => {
       setLoading(false);
     }
   }, []);
+
+  // Verify student identity
+  const verifyStudentIdentity = useCallback(
+    async (did, status) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        if (!currentUser || currentUser.role !== "admin") {
+          throw new Error("You do not have permission to verify identities");
+        }
+
+        const result = await identityService.verifyIdentity(did, status);
+        return result.data;
+      } catch (err) {
+        setError(err.message || "Failed to verify student identity");
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentUser]
+  );
 
   return {
     loading,
